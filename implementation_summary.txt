@@ -1,0 +1,115 @@
+HL byP Scoring System Implementation Summary
+===========================================
+
+## What Was Implemented
+
+1. **Added Scoring Parameters**:
+   - max_mn_cap = 20 (maximum cap for m+n normalization)
+   - enable_hl_byp_scoring = True (toggle for scoring system)
+   - on_trend_ratio = 1.5 (trending pivot significance multiplier)
+
+2. **Created Scoring Method**:
+   - calculate_hl_byp_score(m, n, pivot_type, is_trending)
+   - Normalizes (m+n) to 0-1 range using cap of 20
+   - Applies on_trend_ratio multiplier for trending conditions
+   - Returns final score between 0-1
+
+3. **Integrated Trade Size Adjustment**:
+   - Modified quote_trade() and record_trade() methods
+   - Calculates separate scores for highs and lows
+   - Uses trending vs normal parameters based on market condition
+   - Adjusts trade size: base_entry_size * combined_score
+
+4. **Made Parameters Configurable**:
+   - max_mn_cap can be adjusted in main function
+   - on_trend_ratio can be uncommented and adjusted
+
+## Scoring Examples
+- Normal market (m=10, n=10): score = 0.67 → 67% trade size
+- Trending market (m=5, n=5): score = 1.0 → 100% trade size  
+- Maximum (m=20, n=20): score varies by condition
+
+## Files Modified
+- viphl_strategy.py: Added scoring parameters, method, and trade size integration
+
+Status: Ready for testing
+
+===========================================
+
+## Latest Update: Enhanced HL byP Scoring with On-Trend Ratio
+
+**Understanding**: 
+- Normal m/n: Standard pivot detection (lines 29-32)  
+- On-trend m/n: Faster detection during trends (lines 33-36)
+- on_trend_ratio: Multiplier showing trending pivots are more significant
+
+**Approach**:
+1. Added on_trend_ratio parameter (default 1.5)
+2. Updated scoring method to apply ratio for trending conditions
+3. Made max_mn_cap configurable in main function
+4. Trending pivots now get higher significance scores
+
+**New Scoring Logic**:
+- Normal: window_score * by_point_weight
+- Trending: window_score * by_point_weight * on_trend_ratio
+- Both normalized to 0-1 range
+
+===========================================
+
+## M/N Impact Analysis
+
+**How M/N Affects Score**:
+Formula: window_score = (m + n) / (2 * max_mn_cap)
+
+With max_mn_cap = 10:
+- Normal (m=10, n=10): window_score = 1.0 → final score ≈ 0.67
+- Trending (m=5, n=5): window_score = 0.5 → final score = 1.0
+
+**Current Impact Areas**:
+- Trade Size: entry_size = base_entry_size * combined_score
+- Pivot Detection Quality: Larger m/n = more reliable but slower
+
+**Does NOT affect**:
+- Signal generation thresholds
+- Stop loss calculations
+- Risk management parameters
+- Actual pivot detection logic (handled by PivotHigh/PivotLow classes)
+
+===========================================
+
+## Final Score vs Combined Score Clarification
+
+**Final Score** (calculate_hl_byp_score method):
+- Individual score for ONE pivot type (high OR low)
+- Range: 0-1 for single pivot configuration
+- Formula: window_score * weight_multiplier / max_possible_weight
+
+**Combined Score** (quote_trade/record_trade methods):
+- Average of high_score and low_score
+- Range: 0-1 (average of two final scores)
+- Formula: (high_score + low_score) / 2
+- THIS determines actual trade size
+
+Example with max_mn_cap=10:
+Normal Market: high=0.67, low=0.53 → combined=0.60 → 60% trade size
+Trending Market: high=0.50, low=0.40 → combined=0.45 → 45% trade size
+
+===========================================
+
+## Issue Identified: Configuration Changes Not Affecting Results
+
+**Problem**: User reported that changing configurations doesn't change results at all.
+
+**Root Cause Analysis**:
+With current settings (on_trend_ratio=1, max_mn_cap=20):
+- Normal conditions: (10+10)/(2*20) * 1 / 1 = 0.5
+- Trending conditions: (5+5)/(2*20) * 1 / 1 = 0.25
+- Combined score: (0.5 + 0.25) / 2 = 0.375 → 37.5% trade size
+
+**Issue in Scoring Logic**:
+The normalization in calculate_hl_byp_score uses max_possible_weight = by_point_weight * on_trend_ratio for both normal and trending conditions. When on_trend_ratio=1, both conditions produce minimal differences.
+
+**Next Steps**: 
+- Fix scoring logic to properly differentiate between normal and trending conditions
+- Add debug logging to verify scoring calculations
+- Ensure parameter changes produce meaningful impact on trade sizes
