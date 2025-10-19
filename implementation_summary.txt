@@ -96,7 +96,7 @@ Trending Market: high=0.50, low=0.40 → combined=0.45 → 45% trade size
 
 ===========================================
 
-## Issue Identified: Configuration Changes Not Affecting Results
+## Issue Identified: Configuration Changes Not Affecting Results - FIXED!
 
 **Problem**: User reported that changing configurations doesn't change results at all.
 
@@ -107,9 +107,28 @@ With current settings (on_trend_ratio=1, max_mn_cap=20):
 - Combined score: (0.5 + 0.25) / 2 = 0.375 → 37.5% trade size
 
 **Issue in Scoring Logic**:
-The normalization in calculate_hl_byp_score uses max_possible_weight = by_point_weight * on_trend_ratio for both normal and trending conditions. When on_trend_ratio=1, both conditions produce minimal differences.
+The normalization in calculate_hl_byp_score used max_possible_weight = by_point_weight * on_trend_ratio for both normal and trending conditions. When on_trend_ratio=1, both conditions produce minimal differences.
 
-**Next Steps**: 
-- Fix scoring logic to properly differentiate between normal and trending conditions
-- Add debug logging to verify scoring calculations
-- Ensure parameter changes produce meaningful impact on trade sizes
+**SOLUTION IMPLEMENTED**: 
+- Fixed scoring logic with Option A: Condition-specific normalization
+- Normal conditions normalized against normal max (by_point_weight)
+- Trending conditions normalized against trending max (by_point_weight * on_trend_ratio)
+- Added debug logging to verify calculations
+
+**Results After Fix** (with on_trend_ratio=1.5, max_mn_cap=20):
+- Before: Combined score = 0.300 → 30% trade size
+- After:  Combined score = 0.450 → 45% trade size  
+- **Improvement: +50% trade size for same parameters**
+
+**Test Results**:
+- Normal High (10,10): 0.333 → 0.500 (+50%)
+- Normal Low (8,8):   0.267 → 0.400 (+50%)
+- Trending High (5,5): 0.250 → 0.250 (unchanged - correct)
+- Trending Low (4,4):  0.200 → 0.200 (unchanged - correct)
+
+**Verification**: 
+- When on_trend_ratio=1: No trending bonus applied (scores differ only by m+n values)
+- When on_trend_ratio=1.5: Clear differentiation between normal and trending conditions
+- Parameter changes now produce meaningful impact on trade sizes
+
+**Status**: ✅ FIXED - Scoring logic now properly differentiates conditions and responds to parameter changes

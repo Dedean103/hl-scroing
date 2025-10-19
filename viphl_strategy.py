@@ -103,20 +103,27 @@ class VipHLStrategy(bt.Strategy):
         if not self.p.enable_hl_byp_scoring:
             return 1.0
         
-        # Normalize window siz  e to 0-1 range
+        # Normalize window size to 0-1 range
         window_score = min((m + n) / (2 * self.p.max_mn_cap), 1.0)
         
-        # Apply weight multipliers based on pivot significance
+        # Apply weight multipliers and condition-specific normalization (Option A)
         if is_trending:
             # Trending conditions are more significant with on_trend_ratio multiplier
             weight_multiplier = self.p.by_point_weight * self.p.on_trend_ratio
+            max_possible_weight = self.p.by_point_weight * self.p.on_trend_ratio  # Trending-specific max
         else:
             # Normal conditions use base weight
             weight_multiplier = self.p.by_point_weight
+            max_possible_weight = self.p.by_point_weight  # Normal-specific max
         
-        # Final score incorporating weights (normalized back to 0-1)
-        max_possible_weight = self.p.by_point_weight * self.p.on_trend_ratio
+        # Final score incorporating weights (normalized to each condition's max)
         final_score = min(window_score * weight_multiplier / max_possible_weight, 1.0)
+        
+        # Debug logging
+        if hasattr(self, 'data') and len(self.data) > 0:
+            print(f"[DEBUG] HL Score - Type: {pivot_type}, Trending: {is_trending}, "
+                  f"m+n: {m+n}, Window: {window_score:.3f}, Weight: {weight_multiplier:.3f}, "
+                  f"MaxWeight: {max_possible_weight:.3f}, Final: {final_score:.3f}")
         
         return final_score
 
