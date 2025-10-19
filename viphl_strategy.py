@@ -45,6 +45,8 @@ class VipHLStrategy(bt.Strategy):
         ('max_mn_cap', 20),
         ('enable_hl_byp_scoring', True),
         ('on_trend_ratio', 1.5),
+        ('high_score_scaling_factor', 1.0),  # Weight for high pivot contribution
+        ('low_score_scaling_factor', 1.0),   # Weight for low pivot contribution
 
         # HL Violation设置
         ('bar_count_to_by_point', 800),
@@ -129,6 +131,12 @@ class VipHLStrategy(bt.Strategy):
 
     def __init__(self):
         '''init is called once at the last row'''
+
+        # Validate scaling factors
+        if self.p.high_score_scaling_factor <= 0:
+            raise ValueError(f"high_score_scaling_factor must be positive, got {self.p.high_score_scaling_factor}")
+        if self.p.low_score_scaling_factor <= 0:
+            raise ValueError(f"low_score_scaling_factor must be positive, got {self.p.low_score_scaling_factor}")
 
         '''
         viphl
@@ -316,8 +324,17 @@ class VipHLStrategy(bt.Strategy):
                 is_trending=False
             )
 
-        # Combined score for trade size adjustment
-        combined_score = (high_score + low_score) / 2
+        # Combined score for trade size adjustment with scaling factors
+        weighted_high = high_score * self.p.high_score_scaling_factor
+        weighted_low = low_score * self.p.low_score_scaling_factor
+        total_weight = self.p.high_score_scaling_factor + self.p.low_score_scaling_factor
+        combined_score = (weighted_high + weighted_low) / total_weight
+
+        # Debug logging for weighted scoring
+        if hasattr(self, 'data') and len(self.data) > 0:
+            print(f"[DEBUG] Combined Score - High: {high_score:.3f}*{self.p.high_score_scaling_factor:.1f}={weighted_high:.3f}, "
+                  f"Low: {low_score:.3f}*{self.p.low_score_scaling_factor:.1f}={weighted_low:.3f}, "
+                  f"Combined: {combined_score:.3f}")
 
         # Calculate entry size with scoring adjustment
         base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])
@@ -368,8 +385,17 @@ class VipHLStrategy(bt.Strategy):
                 is_trending=False
             )
 
-        # Combined score for trade size adjustment
-        combined_score = (high_score + low_score) / 2
+        # Combined score for trade size adjustment with scaling factors
+        weighted_high = high_score * self.p.high_score_scaling_factor
+        weighted_low = low_score * self.p.low_score_scaling_factor
+        total_weight = self.p.high_score_scaling_factor + self.p.low_score_scaling_factor
+        combined_score = (weighted_high + weighted_low) / total_weight
+
+        # Debug logging for weighted scoring
+        if hasattr(self, 'data') and len(self.data) > 0:
+            print(f"[DEBUG] Combined Score - High: {high_score:.3f}*{self.p.high_score_scaling_factor:.1f}={weighted_high:.3f}, "
+                  f"Low: {low_score:.3f}*{self.p.low_score_scaling_factor:.1f}={weighted_low:.3f}, "
+                  f"Combined: {combined_score:.3f}")
 
         # Calculate entry size with scoring adjustment
         base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])
