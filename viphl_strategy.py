@@ -596,14 +596,16 @@ if __name__ == '__main__':
         VipHLStrategy,
         mintick = 0.01,
         max_mn_cap = 100,  # HL byP scoring cap (adjustable)
-        high_by_point_n= 10, # n is the # of bar on the left, m is right
-        high_by_point_m= 10,
+        high_by_point_n= 5, # n is the # of bar on the left, m is right
+        high_by_point_m= 5,
         low_by_point_n= 8,
         low_by_point_m= 8,
         high_by_point_n_on_trend= 5,
         high_by_point_m_on_trend= 5,
         low_by_point_n_on_trend= 4,
         low_by_point_m_on_trend= 4,
+        high_score_scaling_factor= 0.5,  # Weight for high pivot contribution
+        low_score_scaling_factor= 0.5,   # Weight for low pivot contribution
         # uncomment to change configurations
         # close_above_low_threshold=0.5,
         on_trend_ratio=1,
