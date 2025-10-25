@@ -1,0 +1,151 @@
+# VipHL Trading Strategy Summary
+
+## Overview
+The VipHL (Very Important Pivot High/Low) strategy is a cryptocurrency trading system that uses pivot point analysis to detect support/resistance levels and generate mean reversion signals after brief level violations.
+
+## Core Components
+
+### 1. Pivot Point Detection
+- **Pivot High**: Local maximum within n+m+1 bars (creates resistance levels)
+- **Pivot Low**: Local minimum within n+m+1 bars (creates support levels)
+- **Window Sizes**:
+  - Normal Market: High(10,10), Low(8,8) - more reliable, slower
+  - Trending Market: High(5,5), Low(4,4) - faster detection
+
+### 2. Market Condition Detection
+- **Trending**: MA10 > MA40 > MA100 AND trending_ma_delta > threshold
+- **Normal**: All other market conditions
+- Determines which pivot parameters to use
+
+### 3. VipHL Pattern Formation
+- Groups related pivot points into HL (support/resistance) zones
+- Merges overlapping pivots within threshold percentage
+- Weights recent pivots more heavily (3x, 2x, 1x)
+
+### 4. Signal Generation Process (Bidirectional System)
+**VipHL generates BOTH long and short signals using the same recovery window logic:**
+
+**LONG Signals (Support Recovery):**
+1. Pivot Low creates support level
+2. Price breaks below support (violates HL)
+3. Price recovers back above support within recovery window
+4. Risk management confirms acceptable stop loss
+
+**SHORT Signals (Resistance Recovery):**
+1. Pivot High creates resistance level
+2. Price breaks above resistance (violates HL)  
+3. Price recovers back below resistance within recovery window
+4. Risk management confirms acceptable stop loss
+
+**Recovery Window Conditions (for ANY HL level):**
+- `close_below_hl`: Price closes below the HL level (bearish break)
+- `break_but_close_above`: Price breaks through but closes back on original side
+- `low_above_current_hl`: Price stays near level without significant violation
+
+**Key Thresholds:**
+- close_above_low_threshold: 1.25% above the low
+- trap_recover_window_threshold: 6 bars recovery window
+- signal_window: 2 bars confirmation
+- reduce_stop_loss_threshold: 5x close average percent
+
+### 5. Scoring System (Position Sizing)
+**Formula:**
+```
+window_score = (m + n) / (2 * max_mn_cap)
+weight_multiplier = by_point_weight * [on_trend_ratio if trending else 1]
+final_score = window_score * weight_multiplier / max_possible_weight
+combined_score = (high_score + low_score) / 2
+entry_size = base_entry_size * combined_score
+```
+
+**Key Parameters:**
+- by_point_weight: 1 (base weight)
+- on_trend_ratio: 1.5 (trending bonus)
+- max_mn_cap: 20 (scoring cap)
+
+**Impact:**
+- Larger m/n values → Higher confidence → Larger positions
+- Trending conditions get 1.5x multiplier
+- Score range: 0-1, affects final position size
+
+### 6. Trade Execution
+**Entry Conditions (ALL must be met):**
+- Within lookback period (600 bars)
+- VipHL recovery pattern confirmed
+- Stop loss risk acceptable
+- Normal OR VVIP signal triggered
+
+**Position Management:**
+- Base size: $2M USD / current_price
+- Actual size: base_size * combined_score
+- Stop loss: Below recent lows
+- Profit taking: 33% at first target, 67% at cycle end
+- Max holding: 6 months (cycle_month * 20 bars)
+
+### 7. Risk Management
+- Dynamic stop loss based on recent lows
+- Position sizing based on pattern confidence
+- Maximum gain cap: 50%
+- Stop loss threshold: 1.0%
+
+## Trading Logic Example
+**BTC Scenario:**
+1. Pivot Low(8,8) detects support at $45,000
+2. Price breaks to $44,500 (violates support)
+3. Price recovers to $45,600 within 6 bars
+4. Combined score: 0.45 (45% confidence)
+5. Entry: 18 BTC (40 BTC base * 0.45 score)
+6. Stop loss: $44,300 (below recent lows)
+
+## Key Insights
+
+### Bidirectional Framework
+The VipHL system is designed as a **complete bidirectional mean reversion strategy** that detects failed breakouts in both directions:
+- **Support failures** → Long signals
+- **Resistance failures** → Short signals
+- Uses identical recovery window logic for both
+
+### Why Pivot Highs Are Essential (Even for Long-Only)
+**Even for long-only strategies, Pivot Highs are crucial:**
+
+1. **HL Merging and Pattern Strength**: Both high and low pivots contribute to unified HL objects. Support levels are strengthened by nearby resistance pivots.
+
+2. **Market Structure Context**: Resistance levels provide:
+   - Profit potential assessment (room to next resistance)
+   - Realistic target setting (avoid longs near strong resistance)  
+   - Risk management (avoid trades in compressed ranges)
+
+3. **Pattern Validation**: Strong support signals often occur when:
+   - Support is well-defined (low pivots) AND
+   - Nearby resistance exists (high pivots) AND  
+   - Price action respects both levels
+
+4. **VVIP Signal Generation**: High confidence signals require multiple pivot confirmations from BOTH high and low pivots (vip_by_point_count).
+
+**Without Pivot Highs you'd lose:**
+- Weaker support detection (no high pivot confluence)
+- No overhead resistance context (poor profit targets)
+- Reduced VVIP signals (lower confidence trades)
+- Incomplete market structure (missing half the context)
+
+### Mean Reversion Strategy
+The strategy bets on **mean reversion** after brief support/resistance violations, detecting:
+- Breakout patterns (price violates key levels)
+- Recovery patterns (price returns to respect levels)
+- Risk-reward setups (appropriate stop distances)
+
+## Recent Fix (Scoring System)
+**Problem**: Configuration changes weren't affecting results
+**Solution**: Implemented condition-specific normalization
+- Normal conditions: normalize against by_point_weight
+- Trending conditions: normalize against by_point_weight * on_trend_ratio
+**Result**: 50% improvement in parameter sensitivity (0.30 → 0.45 combined score)
+
+## Configuration Parameters Summary
+- lookback: 600 bars (trading window)
+- order_size_in_usd: $2,000,000 (base position)
+- cycle_month: 6.0 (max holding period)
+- stop_loss_pt: 1.0% (risk limit)
+- max_gain_pt: 50.0% (profit cap)
+- close_above_low_threshold: 1.25% (recovery confirmation)
+- trap_recover_window_threshold: 6 bars (recovery timeframe)

@@ -1,0 +1,108 @@
+# VipHL Scoring System - Complete Guide
+
+## Overview
+The VipHL scoring system dynamically adjusts position sizes based on the quality and confidence of pivot point detection. It uses a multi-layered approach that considers market conditions, pivot reliability, and user-defined weightings.
+
+## Scoring System Architecture
+
+### Layer 1: Individual Pivot Scores (0-1 range)
+
+**Step 1: Window Score Calculation**
+```
+window_score = min((m + n) / (2 * max_mn_cap), 1.0)
+```
+- `m, n`: Left/right bars for pivot detection
+- `max_mn_cap`: Maximum cap for normalization (default: 20)
+- **Larger m/n values = Higher reliability = Higher scores**
+
+**Examples with max_mn_cap=20:**
+- High(10,10): `(10+10)/(2*20) = 0.5`
+- Low(8,8): `(8+8)/(2*20) = 0.4`  
+- High(5,5): `(5+5)/(2*20) = 0.25`
+- Low(4,4): `(4+4)/(2*20) = 0.2`
+
+**Step 2: Market Condition Weighting**
+```python
+if is_trending:
+    weight_multiplier = by_point_weight * on_trend_ratio  # 1 * 1.5 = 1.5
+    max_possible_weight = by_point_weight * on_trend_ratio  # 1.5
+else:
+    weight_multiplier = by_point_weight  # 1
+    max_possible_weight = by_point_weight  # 1
+```
+
+**Step 3: Final Individual Score**
+```
+final_score = min(window_score * weight_multiplier / max_possible_weight, 1.0)
+```
+
+**Results:**
+- **Normal Market**: High(10,10)=0.5, Low(8,8)=0.4
+- **Trending Market**: High(5,5)=0.25, Low(4,4)=0.2
+
+### Layer 2: Combined Score with Scaling Factors
+
+**Step 4: Apply User-Defined Scaling Factors**
+```python
+weighted_high = high_score * high_score_scaling_factor
+weighted_low = low_score * low_score_scaling_factor
+total_weight = high_score_scaling_factor + low_score_scaling_factor
+combined_score = (weighted_high + weighted_low) / total_weight
+```
+
+**Key Parameters:**
+- `high_score_scaling_factor`: Weight for resistance quality (default: 1.0)
+- `low_score_scaling_factor`: Weight for support quality (default: 1.0)
+- `on_trend_ratio`: Trending market bonus (default: 1.5)
+- `by_point_weight`: Base weight (default: 1)
+
+### Layer 3: Position Size Calculation
+
+**Step 5: Final Entry Size**
+```python
+base_entry_size = order_size_in_usd / current_price
+entry_size = floor(base_entry_size * combined_score)
+```
+
+## Complete Scoring Examples
+
+### Example 1: Normal Market (Equal Weighting)
+**Configuration:**
+- Normal: High(10,10), Low(8,8)
+- Scaling: high_factor=1.0, low_factor=1.0
+- Market: MA10 ≤ MA40 (normal conditions)
+
+**Calculation:**
+1. `high_score = 0.5 * 1 / 1 = 0.5`
+2. `low_score = 0.4 * 1 / 1 = 0.4`
+3. `weighted_high = 0.5 * 1.0 = 0.5`
+4. `weighted_low = 0.4 * 1.0 = 0.4`
+5. `combined_score = (0.5 + 0.4) / (1.0 + 1.0) = 0.45`
+6. **Position: 40 BTC * 0.45 = 18 BTC (45%)**
+
+### Example 2: Long-Only Bias (Low Emphasis)
+**Configuration:**
+- Same pivots as above
+- Scaling: high_factor=0.3, low_factor=1.0
+- Market: Normal conditions
+
+**Calculation:**
+1. `high_score = 0.5`, `low_score = 0.4`
+2. `weighted_high = 0.5 * 0.3 = 0.15`
+3. `weighted_low = 0.4 * 1.0 = 0.4`
+4. `combined_score = (0.15 + 0.4) / (0.3 + 1.0) = 0.423`
+5. **Position: 40 BTC * 0.423 = 16.9 BTC (42.3%)**
+
+### Example 3: Trending Market
+**Configuration:**
+- Trending: High(5,5), Low(4,4)  
+- Scaling: high_factor=1.0, low_factor=1.0
+- Market: MA10 > MA40 > MA100 (trending)
+
+**Calculation:**
+1. `high_score = 0.25 * 1.5 / 1.5 = 0.25`
+2. `low_score = 0.2 * 1.5 / 1.5 = 0.2`
+3. `weighted_high = 0.25 * 1.0 = 0.25`
+4. `weighted_low = 0.2 * 1.0 = 0.2`
+5. `combined_score = (0.25 + 0.2) / (1.0 + 1.0) = 0.225`
+6. **Position: 40 BTC * 0.225 = 9 BTC (22.5%)**
