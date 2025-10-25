@@ -123,43 +123,69 @@ cerebro.addstrategy(
 
 ## 🛠️ Development Tools
 
-### Parameter Testing
-- **`interactive_parameter_test.py`**: Interactive CLI tool for real-time parameter testing
-- **`parameter_test.py`**: Automated backtesting framework for systematic parameter evaluation
+### Testing & Analysis Files
+- **`viphl_strategy_scoring.py`**: Alternative strategy implementation with scoring focus
+- **`pmt_grid_search.py`**: Grid search optimization for parameter tuning
+
+### Documentation
+- **`scoring_system_guide.txt`**: Complete guide to the HL byP scoring system
+- **`viphl_summary.txt`**: Comprehensive strategy overview and algorithm explanation
+- **`implementation_summary.txt`**: Development history and implementation details
+- **`CLAUDE.md`**: Project-specific instructions for Claude Code assistant
 
 ### Usage Examples
 ```bash
-# Interactive parameter exploration
-python3 interactive_parameter_test.py
+# Run grid search optimization
+python3 pmt_grid_search.py
 
-# Automated parameter comparison
-python3 parameter_test.py
+# Alternative scoring-focused strategy
+python3 viphl_strategy_scoring.py
 
-# Full strategy execution
+# Main strategy execution
 python3 viphl_strategy.py
 ```
 
 ## 📁 Project Structure
 
 ```
-├── viphl_strategy.py              # Main strategy implementation
-├── viphl_strategy_test.py         # Older version with grid search
-├── interactive_parameter_test.py  # Interactive parameter testing
-├── parameter_test.py             # Automated parameter testing
-├── indicators/                   # Custom indicators
+├── viphl_strategy.py              # Main strategy implementation (CURRENT)
+├── viphl_strategy_scoring.py      # Alternative scoring-focused strategy
+├── pmt_grid_search.py             # Parameter optimization grid search
+├── BTC.csv                        # Bitcoin price data (main dataset)
+├── CLAUDE.md                      # Claude Code assistant instructions
+├── scoring_system_guide.txt       # HL byP scoring system documentation
+├── viphl_summary.txt              # Strategy overview and algorithm details
+├── implementation_summary.txt     # Development history and progress
+├── indicators/                    # Custom indicators
+│   ├── common/
+│   │   ├── base_indicator.py      # Base indicator class
+│   │   └── common_util.py         # Shared utilities
 │   └── helper/
-│       ├── pivot_high.py         # Pivot high detection
-│       ├── pivot_low.py          # Pivot low detection
-│       ├── close_average.py      # Average price calculations
-│       └── percentile_nearest_rank.py
-├── dto/                          # Data structures
-│   └── trade_v2.py               # Enhanced trade tracking
-├── data/                         # Market data files
-│   ├── BTC.csv
-│   ├── ETH.csv
-│   └── SOL.csv
-├── backtrader/                   # Customized backtrader framework
-└── requirements.txt              # Dependencies
+│       ├── pivot_high.py          # Pivot high detection
+│       ├── pivot_low.py           # Pivot low detection
+│       ├── close_average.py       # Average price calculations
+│       └── percentile_nearest_rank.py # Statistical ranking
+├── dto/                           # Data structures
+│   └── trade_v2.py                # Enhanced trade tracking
+├── data/                          # Market data files
+│   ├── BTC.csv                    # Bitcoin data (duplicate)
+│   ├── ETH.csv                    # Ethereum data
+│   ├── SOL.csv                    # Solana data
+│   ├── grid_search_results_BTC.csv # BTC optimization results
+│   ├── grid_search_results_ETH.csv # ETH optimization results
+│   └── grid_search_results_SOL.csv # SOL optimization results
+├── backtrader/                    # Customized backtrader framework
+│   ├── analyzers/                 # Performance analysis tools
+│   ├── brokers/                   # Broker implementations
+│   ├── feeds/                     # Data feed handlers
+│   ├── indicators/                # Technical indicators library
+│   ├── observers/                 # Trade monitoring
+│   ├── plot/                      # Visualization tools
+│   ├── sizers/                    # Position sizing methods
+│   ├── stores/                    # Data storage interfaces
+│   └── strategies/                # Strategy templates
+├── venv/                          # Virtual environment
+└── requirements.txt               # Dependencies
 ```
 
 ## 📈 Recent Improvements
