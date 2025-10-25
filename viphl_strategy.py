@@ -92,6 +92,7 @@ class VipHLStrategy(bt.Strategy):
         ('max_exit_ca_multiplier', 3.0),  # Equivalent to maxExitCAMultiplier
         ('stop_gain_pt', 30.0),  # Equivalent to stopGainPt
         ('toggle_pnl', True), #what is this?
+        ('debug_mode', False),  # Enable/disable debug printing
     )
 
     def log(self, txt, dt=None, doprint=True):
@@ -122,7 +123,7 @@ class VipHLStrategy(bt.Strategy):
         final_score = min(window_score * weight_multiplier / max_possible_weight, 1.0)
         
         # Debug logging
-        if hasattr(self, 'data') and len(self.data) > 0:
+        if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
             print(f"[DEBUG] HL Score - Type: {pivot_type}, Trending: {is_trending}, "
                   f"m+n: {m+n}, Window: {window_score:.3f}, Weight: {weight_multiplier:.3f}, "
                   f"MaxWeight: {max_possible_weight:.3f}, Final: {final_score:.3f}")
@@ -331,7 +332,7 @@ class VipHLStrategy(bt.Strategy):
         combined_score = (weighted_high + weighted_low) / total_weight
 
         # Debug logging for weighted scoring
-        if hasattr(self, 'data') and len(self.data) > 0:
+        if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
             print(f"[DEBUG] Combined Score - High: {high_score:.3f}*{self.p.high_score_scaling_factor:.1f}={weighted_high:.3f}, "
                   f"Low: {low_score:.3f}*{self.p.low_score_scaling_factor:.1f}={weighted_low:.3f}, "
                   f"Combined: {combined_score:.3f}")
@@ -392,7 +393,7 @@ class VipHLStrategy(bt.Strategy):
         combined_score = (weighted_high + weighted_low) / total_weight
 
         # Debug logging for weighted scoring
-        if hasattr(self, 'data') and len(self.data) > 0:
+        if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
             print(f"[DEBUG] Combined Score - High: {high_score:.3f}*{self.p.high_score_scaling_factor:.1f}={weighted_high:.3f}, "
                   f"Low: {low_score:.3f}*{self.p.low_score_scaling_factor:.1f}={weighted_low:.3f}, "
                   f"Combined: {combined_score:.3f}")
@@ -595,7 +596,7 @@ if __name__ == '__main__':
     cerebro.addstrategy(
         VipHLStrategy,
         mintick = 0.01,
-        max_mn_cap = 100,  # HL byP scoring cap (adjustable)
+        max_mn_cap = 12,  # HL byP scoring cap (adjustable)
         high_by_point_n= 5, # n is the # of bar on the left, m is right
         high_by_point_m= 5,
         low_by_point_n= 8,
@@ -606,6 +607,7 @@ if __name__ == '__main__':
         low_by_point_m_on_trend= 4,
         high_score_scaling_factor= 0.5,  # Weight for high pivot contribution
         low_score_scaling_factor= 0.5,   # Weight for low pivot contribution
+        debug_mode=False,  # Enable/disable debug printing
         # uncomment to change configurations
         # close_above_low_threshold=0.5,
         on_trend_ratio=1,
