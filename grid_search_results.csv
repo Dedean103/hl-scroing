@@ -1,0 +1,701 @@
+high_by_point_m,high_by_point_n,low_by_point_m,low_by_point_n,high_by_point_m_on_trend,high_by_point_n_on_trend,low_by_point_m_on_trend,low_by_point_n_on_trend,mintick,max_mn_cap,high_score_scaling_factor,low_score_scaling_factor,debug_mode,on_trend_ratio,Fit Score,Total Pnl%,Avg Pnl% per entry,Trade Count,Winning entry%,Avg Winner%,Avg Loser%,Error
+4,4,4,4,4,4,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpzshnsy08.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,4,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpcaipnvyq.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,4,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmplk5tqs21.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,4,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp9jiw29lu.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,4,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpg8pq6pzh.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,4,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpwvk3_fcq.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,4,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpylglpmno.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,4,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp046urw90.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,4,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpr1v9wgdi.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,5,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp8qbu__50.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,5,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpl42ayemv.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,5,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp43rcdx6w.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,5,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp5z_ryezw.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,5,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpxz6q9yhg.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,5,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpqnhvft0_.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,5,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp36nfoq_z.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,5,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp5c24iuhz.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,5,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp8ohrg7h8.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,6,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpyj7eg1lt.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,6,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpgwn19nrg.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,6,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpyleokmow.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,6,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpd967ce15.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,6,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpv45_4ao8.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,6,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpa88_j66s.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,6,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp7i82pvyp.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,6,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp1qcbhhfj.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,4,6,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp2z5g80vm.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,4,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp66hz_zcg.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,4,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpuisgjwpd.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,4,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpx9y82ry1.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,4,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpqb4wt5j2.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,4,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpjoe4p5fh.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,4,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpegvhky4a.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,4,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpyszs81na.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,4,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpiqqfckhs.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,4,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpudruyq69.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,5,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmphmrrfl73.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,5,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpbpbhegh0.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,5,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmptwb50by_.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,5,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpfb4sm08o.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,5,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpt90u0r90.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,5,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpbf_m3586.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,5,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpf2phue32.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,5,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpmb69hi3j.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,5,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpmqlg_x50.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,6,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp5c69o311.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,6,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmph64muigb.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,6,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmptozj1u19.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,6,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp591nww7s.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,6,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpd3q79b_1.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,6,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp4ovqf2mt.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,6,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpybo0qajg.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,6,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpm5fzvy54.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,5,6,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpxu212964.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,4,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpa5wr6gp9.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,4,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpv5c5457f.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,4,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpzo0kc2gb.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,4,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmparxr3v_1.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,4,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpvfsq345g.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,4,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpy8h48wva.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,4,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp9997f73p.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,4,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp4_ipk7ue.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,4,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpa_5u7xn7.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,5,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp7xx4lhd5.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,5,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpjb1dv6_f.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,5,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp_ssdxp6b.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,5,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpsh45dkl8.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,5,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmptuaw_qs_.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,5,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp_06zbyvo.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,5,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpbflqz2fs.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,5,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpuj5ma18f.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,5,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpct_787zy.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,6,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpucos6gfa.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,6,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmph4y9m9kl.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,6,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmplpjwok1b.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,6,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmphtktbtzn.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,6,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpfj2pb786.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,6,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp_5h21b2d.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,6,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp7rsgp7vh.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,6,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpw6vbsvgg.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,4,6,6,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpwk2abq0d.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,4,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpw3ls1_nn.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,4,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp0i6vj7xd.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,4,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpeme4bt16.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,4,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp53k4i8vv.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,4,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpinnpvpvr.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,4,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpod37hc1g.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,4,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpaoete1r8.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,4,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpu9mrb71e.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,4,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpk4ipsxq0.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,5,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpgp3emg4g.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,5,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpch8pkpnx.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,5,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpmd97lm1f.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,5,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpt27dn95o.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,5,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpzsdpbl7o.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,5,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp5sqjaeoe.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,5,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpfmrlefz3.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,5,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpnnsgrca_.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,5,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp0o2oa_l5.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,6,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpn9piyi6x.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,6,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmph6wuh00g.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,6,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpvyre1udi.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,6,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpxjbcb0oh.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,6,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpvmve78gj.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,6,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp1068l_z4.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,6,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpha5r4ui3.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,6,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpe58cpf6j.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,4,6,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpcqsc8f15.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,4,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmppenb1arf.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,4,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp2rsq6fzy.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,4,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpp6fuipmv.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,4,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpbrnc2267.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,4,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpxjevv_dh.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,4,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmprt0gjmg1.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,4,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp2kf47bwm.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,4,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpqrh6ilfn.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,4,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpk_4eyeu5.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,5,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpyih5xqu7.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,5,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpedweji11.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,5,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp9k0hse7_.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,5,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp56567ul1.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,5,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp53sy3pd9.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,5,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpbu_ribjm.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,5,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpf_siylm1.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,5,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp8t9tttyc.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,5,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmppf5mok9q.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,6,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp3tod9ssr.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,6,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpycce6w3a.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,6,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpuy6ndhvx.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,6,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpfnmavukq.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,6,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp039ato92.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,6,5,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpbk2o7d6p.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,6,6,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp382rh6a1.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,6,6,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpqtimbvnb.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,5,6,6,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpc4yz7ebr.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,6,4,4,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp8h59y_of.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,6,4,4,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmp7skaddxw.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,6,4,4,6,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpw5478vxz.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,6,4,5,4,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmps61hdk11.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
+4,4,4,5,6,4,5,5,0.01,12,0.5,0.5,False,1,,,,,,,,"Script failed with return code 1. STDERR: Traceback (most recent call last):
+  File ""/tmp/tmpqzn56ecw.py"", line 3, in <module>
+    import backtrader as bt
+ModuleNotFoundError: No module named 'backtrader'
+..."
