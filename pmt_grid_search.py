@@ -109,11 +109,10 @@ def run_grid_search(csv_file='BTC.csv', save_interval=10):
 
         # Save results every save_interval iterations
         if (i + 1) % save_interval == 0:
-            save_results_to_csv(all_results, f'grid_search_results_partial_{i+1}.csv')
+            #save_results_to_csv(all_results, f'grid_search_results_partial_{i+1}.csv')
+            save_results_to_csv(all_results, 'grid_search_results_scroing.csv')
             print(f"Partial results saved at iteration {i+1}")
 
-    # Save final results
-    save_results_to_csv(all_results, 'grid_search_results_final.csv')
     
     # Print summary
     valid_results = [r for r in all_results if r.get('Fit Score') is not None]
