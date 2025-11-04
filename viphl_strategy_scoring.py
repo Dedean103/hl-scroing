@@ -45,6 +45,7 @@ class VipHLStrategy(bt.Strategy):
         ('max_mn_cap', 20),
         ('enable_hl_byp_scoring', True),
         ('on_trend_ratio', 1.5),
+        ('power_scaling_factor', 1.0),       # k: exponent for window scoring (m**k + n**k)
         ('high_score_scaling_factor', 1.0),  # Weight for high pivot contribution
         ('low_score_scaling_factor', 1.0),   # Weight for low pivot contribution
 
@@ -102,12 +103,14 @@ class VipHLStrategy(bt.Strategy):
             print('%s, %s' % (dt.isoformat(), txt))
 
     def calculate_hl_byp_score(self, m, n, pivot_type='high', is_trending=False):
-        '''Calculate normalized HL byP score (0-1) based on m,n parameters'''
+        '''Calculate normalized HL byP score (0-1) based on m,n parameters with power scaling'''
         if not self.p.enable_hl_byp_scoring:
             return 1.0
-        
-        # Normalize window size to 0-1 range
-        window_score = min((m + n) / (2 * self.p.max_mn_cap), 1.0)
+
+        # Apply power scaling factor k to window size calculation
+        k = self.p.power_scaling_factor
+        # Normalize window size to 0-1 range using power scaling: (m**k + n**k) / (2 * max_mn_cap**k)
+        window_score = min((m**k + n**k) / (2 * (self.p.max_mn_cap ** k)), 1.0)
         
         # Apply weight multipliers and condition-specific normalization (Option A)
         if is_trending:
@@ -125,7 +128,8 @@ class VipHLStrategy(bt.Strategy):
         # Debug logging
         if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
             print(f"[DEBUG] HL Score - Type: {pivot_type}, Trending: {is_trending}, "
-                  f"m+n: {m+n}, Window: {window_score:.3f}, Weight: {weight_multiplier:.3f}, "
+                  f"k: {k:.2f}, m+n: {m+n}, m^k+n^k: {m**k + n**k:.3f}, "
+                  f"Window: {window_score:.3f}, Weight: {weight_multiplier:.3f}, "
                   f"MaxWeight: {max_possible_weight:.3f}, Final: {final_score:.3f}")
         
         return final_score
@@ -605,6 +609,7 @@ if __name__ == '__main__':
         high_by_point_m_on_trend= 10,
         low_by_point_n_on_trend= 10,
         low_by_point_m_on_trend= 10,
+        power_scaling_factor= 1.0,      # k: 1.0 (linear), >1 (exponential), <1 (diminishing)
         high_score_scaling_factor= 0.5,  # Weight for high pivot contribution
         low_score_scaling_factor= 0.5,   # Weight for low pivot contribution
         debug_mode=False,  # Enable/disable debug printing
