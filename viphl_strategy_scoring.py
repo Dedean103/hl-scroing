@@ -111,7 +111,7 @@ class VipHLStrategy(bt.Strategy):
         k = self.p.power_scaling_factor
         # Normalize window size to 0-1 range using power scaling: (m**k + n**k) / (2 * max_mn_cap**k)
         window_score = min((m**k + n**k) / (2 * (self.p.max_mn_cap ** k)), 1.0)
-        
+
         # Apply weight multipliers and condition-specific normalization (Option A)
         if is_trending:
             # Trending conditions are more significant with on_trend_ratio multiplier
@@ -121,18 +121,37 @@ class VipHLStrategy(bt.Strategy):
             # Normal conditions use base weight
             weight_multiplier = self.p.by_point_weight
             max_possible_weight = self.p.by_point_weight  # Normal-specific max
-        
+
         # Final score incorporating weights (normalized to each condition's max)
         final_score = min(window_score * weight_multiplier / max_possible_weight, 1.0)
-        
+
         # Debug logging
         if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
             print(f"[DEBUG] HL Score - Type: {pivot_type}, Trending: {is_trending}, "
                   f"k: {k:.2f}, m+n: {m+n}, m^k+n^k: {m**k + n**k:.3f}, "
                   f"Window: {window_score:.3f}, Weight: {weight_multiplier:.3f}, "
                   f"MaxWeight: {max_possible_weight:.3f}, Final: {final_score:.3f}")
-        
+
         return final_score
+
+    def calculate_pnl_scale(self, combined_score):
+        '''
+        Maps combined_score (0-1) to PnL scale (1-3) using exponential curve
+        Formula: scale = 1 + 2 * (score ^ exponent)
+
+        With exponent=2 (quadratic):
+        - score=0.0 → scale=1.0 (minimum)
+        - score=0.5 → scale=1.5 (mid-range)
+        - score=1.0 → scale=3.0 (maximum)
+        '''
+        exponent = 2.0
+        scale = 1.0 + 2.0 * (combined_score ** exponent)
+
+        # Debug logging
+        if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
+            print(f"[DEBUG] PnL Scale - Score: {combined_score:.3f}, Scale: {scale:.3f}")
+
+        return scale
 
     def __init__(self):
         '''init is called once at the last row'''
@@ -218,6 +237,7 @@ class VipHLStrategy(bt.Strategy):
 
         # For tracking trades
         self.trade_list = []
+        self.trade_scales = {}  # Maps trade id to PnL scale (1-3)
         self.result = {}
 
         # For pretty graph
@@ -365,28 +385,28 @@ class VipHLStrategy(bt.Strategy):
         # Calculate HL byP scores for current market condition
         if self.is_ma_trending[0]:
             high_score = self.calculate_hl_byp_score(
-                self.p.high_by_point_m_on_trend, 
-                self.p.high_by_point_n_on_trend, 
-                pivot_type='high', 
+                self.p.high_by_point_m_on_trend,
+                self.p.high_by_point_n_on_trend,
+                pivot_type='high',
                 is_trending=True
             )
             low_score = self.calculate_hl_byp_score(
-                self.p.low_by_point_m_on_trend, 
-                self.p.low_by_point_n_on_trend, 
-                pivot_type='low', 
+                self.p.low_by_point_m_on_trend,
+                self.p.low_by_point_n_on_trend,
+                pivot_type='low',
                 is_trending=True
             )
         else:
             high_score = self.calculate_hl_byp_score(
-                self.p.high_by_point_m, 
-                self.p.high_by_point_n, 
-                pivot_type='high', 
+                self.p.high_by_point_m,
+                self.p.high_by_point_n,
+                pivot_type='high',
                 is_trending=False
             )
             low_score = self.calculate_hl_byp_score(
-                self.p.low_by_point_m, 
-                self.p.low_by_point_n, 
-                pivot_type='low', 
+                self.p.low_by_point_m,
+                self.p.low_by_point_n,
+                pivot_type='low',
                 is_trending=False
             )
 
@@ -402,9 +422,12 @@ class VipHLStrategy(bt.Strategy):
                   f"Low: {low_score:.3f}*{self.p.low_score_scaling_factor:.1f}={weighted_low:.3f}, "
                   f"Combined: {combined_score:.3f}")
 
-        # Calculate entry size with scoring adjustment
+        # Calculate PnL scale from combined score
+        pnl_scale = self.calculate_pnl_scale(combined_score)
+
+        # Calculate entry size WITHOUT scoring adjustment (use base size only)
         base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])
-        entry_size = math.floor(base_entry_size * combined_score)
+        entry_size = base_entry_size
 
         self.trade_list.append(
             TradeV2(
@@ -419,6 +442,9 @@ class VipHLStrategy(bt.Strategy):
                 max_exit_price=self.data.high[0]
             )
         )
+
+        # Store the PnL scale for this trade
+        self.trade_scales[id(self.trade_list[-1])] = pnl_scale
 
     def manage_trade(self):
         self.cur_drawdown = 0.0
@@ -478,8 +504,10 @@ class VipHLStrategy(bt.Strategy):
                         trade.first_return = cur_return
                         self.current_equity += (1 + cur_return / 100) * cur_entry_price * int(trade.total_entry_size * 0.33)
                         self.max_equity = max(self.max_equity, self.current_equity)
-                        self.total_pnl += cur_return / 3
-                        trade.pnl += cur_return / 3
+                        # Apply PnL scale to partial exit
+                        scale = self.trade_scales.get(id(trade), 1.0)
+                        self.total_pnl += cur_return / 3 * scale
+                        trade.pnl += cur_return / 3 * scale
                     trade.take_profit = True # take ptofit meaning second time?
                     trade.open_entry_size -= int(trade.total_entry_size * 0.33)
 
@@ -499,16 +527,20 @@ class VipHLStrategy(bt.Strategy):
         trade.first_return = cur_return
         self.current_equity += (1 + cur_return / 100) * cur_entry_price * trade.open_entry_size
         self.max_equity = max(self.max_equity, self.current_equity)
-        self.total_pnl += cur_return
-        trade.pnl += cur_return
+        # Apply PnL scale
+        scale = self.trade_scales.get(id(trade), 1.0)
+        self.total_pnl += cur_return * scale
+        trade.pnl += cur_return * scale
 
     # why second time?
     def exit_second_time(self, cur_entry_price, cur_return, trade):
         trade.second_return = cur_return
         self.current_equity += (1 + cur_return / 100) * cur_entry_price * trade.open_entry_size
         self.max_equity = max(self.max_equity, self.current_equity)
-        self.total_pnl += cur_return * 2 / 3
-        trade.pnl += cur_return * 2 / 3
+        # Apply PnL scale
+        scale = self.trade_scales.get(id(trade), 1.0)
+        self.total_pnl += cur_return * 2 / 3 * scale
+        trade.pnl += cur_return * 2 / 3 * scale
 
     def stop(self):
         self.export_hl_for_plotting()
