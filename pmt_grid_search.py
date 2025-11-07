@@ -14,18 +14,19 @@ def generate_parameter_combinations():
     # Generate all combinations for normal and trending conditions
     param_combinations = []
 
-    for high_n, high_m, low_n, low_m, high_n_trend, high_m_trend, low_n_trend, low_m_trend, k in itertools.product(
-        mn_range, mn_range, mn_range, mn_range, mn_range, mn_range, mn_range, mn_range, k_range
-    ):
+    #for high_n, high_m, low_n, low_m, high_n_trend, high_m_trend, low_n_trend, low_m_trend, k in itertools.product(
+    #    mn_range, mn_range, mn_range, mn_range, mn_range, mn_range, mn_range, mn_range, k_range
+    #):
+    for k in k_range:
         params = {
-            'high_by_point_n': high_n,
-            'high_by_point_m': high_m,
-            'low_by_point_n': low_n,
-            'low_by_point_m': low_m,
-            'high_by_point_n_on_trend': high_n_trend,
-            'high_by_point_m_on_trend': high_m_trend,
-            'low_by_point_n_on_trend': low_n_trend,
-            'low_by_point_m_on_trend': low_m_trend,
+            'high_by_point_n': 4,#high_n,
+            'high_by_point_m': 4,#high_m,
+            'low_by_point_n': 4,#low_n,
+            'low_by_point_m': 4,#low_m,
+            'high_by_point_n_on_trend': 4,#high_n_trend,
+            'high_by_point_m_on_trend': 4,#high_m_trend,
+            'low_by_point_n_on_trend': 4,#low_n_trend,
+            'low_by_point_m_on_trend': 4,#low_m_trend,
             'power_scaling_factor': k,
             'mintick': 0.01,
             'debug_mode': False

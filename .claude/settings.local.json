@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python analyze_scale_distribution.py:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
