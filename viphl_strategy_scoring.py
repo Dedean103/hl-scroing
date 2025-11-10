@@ -136,16 +136,20 @@ class VipHLStrategy(bt.Strategy):
 
     def calculate_pnl_scale(self, combined_score):
         '''
-        Maps combined_score (0-1) to PnL scale (1-3) using exponential curve
-        Formula: scale = 1 + 2 * (score ^ exponent)
+        Maps combined_score (0-1) to PnL scale (1-3) using square root curve
+        Formula: scale = 1 + 2 * sqrt(score)
 
-        With exponent=2 (quadratic):
-        - score=0.0 → scale=1.0 (minimum)
-        - score=0.5 → scale=1.5 (mid-range)
-        - score=1.0 → scale=3.0 (maximum)
+        Characteristics:
+        - Fast growth at low scores (rewards even small m,n quickly)
+        - Diminishing returns as score increases
+        - Reaches exactly 3.0 at score=1.0
+
+        Examples:
+        - score=0.1 → scale=1.63 (63% gain from small pivots)
+        - score=0.5 → scale=2.41 (141% gain at midpoint)
+        - score=1.0 → scale=3.00 (maximum at cap)
         '''
-        exponent = 2.0
-        scale = 1.0 + 2.0 * (combined_score ** exponent)
+        scale = 1.0 + 2.0 * math.sqrt(combined_score)
 
         # Debug logging
         if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
