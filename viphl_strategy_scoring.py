@@ -609,6 +609,9 @@ class VipHLStrategy(bt.Strategy):
         avg_losing_pnl = round(loss_pnl / loss_count, 2) if loss_count > 0 else 0
         fit_score = round(FIT_SCORE_MAX if loss_pnl == 0.0 else min((-win_pnl / loss_pnl), FIT_SCORE_MAX), 2)
 
+        # Get PnL scale (same for all trades in a run since it's based on fixed m,n,k parameters)
+        scale = round(list(self.trade_scales.values())[0], 3) if len(self.trade_scales) > 0 else 0
+
         self.result = {
             "Total Pnl%": total_pnl,
             "Avg Pnl% per entry": avg_pnl_per_entry,
@@ -616,7 +619,8 @@ class VipHLStrategy(bt.Strategy):
             "Winning entry%": winning_entry_rate,
             "Avg Winner%": avg_winning_pnl,
             "Avg Loser%": avg_losing_pnl,
-            "Fit Score": fit_score
+            "Fit Score": fit_score,
+            "Scale": scale
         }
         self.trade_detail_list = trade_detail_list
 

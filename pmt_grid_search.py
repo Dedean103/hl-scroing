@@ -7,26 +7,26 @@ def generate_parameter_combinations():
     """Generate all combinations of m and n parameters ranging from 4 to 10"""
     
     # Parameter ranges
-    mn_range = [4,10]  # 4 to 10 inclusive
-    k_range = [1,1.1,1.2,1.3]
+    mn_range = [4, 14]  # 4 to 10 inclusive
+    k_range = [1.1, 1.3, 1.5, 2]
 
-    
+    c = 0
     # Generate all combinations for normal and trending conditions
     param_combinations = []
 
-    #for high_n, high_m, low_n, low_m, high_n_trend, high_m_trend, low_n_trend, low_m_trend, k in itertools.product(
-    #    mn_range, mn_range, mn_range, mn_range, mn_range, mn_range, mn_range, mn_range, k_range
-    #):
-    for k in k_range:
+    for high_n, high_m, low_n, low_m, high_n_trend, high_m_trend, low_n_trend, low_m_trend, k in itertools.product(
+        mn_range, mn_range, mn_range, mn_range, mn_range, mn_range, mn_range, mn_range, k_range
+    ):
+    #for k in k_range:
         params = {
-            'high_by_point_n': 4,#high_n,
-            'high_by_point_m': 4,#high_m,
-            'low_by_point_n': 4,#low_n,
-            'low_by_point_m': 4,#low_m,
-            'high_by_point_n_on_trend': 4,#high_n_trend,
-            'high_by_point_m_on_trend': 4,#high_m_trend,
-            'low_by_point_n_on_trend': 4,#low_n_trend,
-            'low_by_point_m_on_trend': 4,#low_m_trend,
+            'high_by_point_n': high_n,
+            'high_by_point_m': high_m,
+            'low_by_point_n': low_n,
+            'low_by_point_m': low_m,
+            'high_by_point_n_on_trend': high_n_trend,
+            'high_by_point_m_on_trend': high_m_trend,
+            'low_by_point_n_on_trend': low_n_trend,
+            'low_by_point_m_on_trend': low_m_trend,
             'power_scaling_factor': k,
             'mintick': 0.01,
             'debug_mode': False
@@ -61,63 +61,67 @@ def run_grid_search(csv_file='BTC.csv', save_interval=10):
     print("Starting grid search...\n")
 
     for i, params in enumerate(param_combinations):
-        try:
-            # Create Cerebro instance
-            cerebro = bt.Cerebro()
-            data = bt.feeds.PandasData(dataname=df)
-            cerebro.adddata(data)
-            cerebro.broker.set_coc(True)
-            cerebro.addstrategy(VipHLStrategy, **params)
+        #if i > 690:
+            try:
+                # Create Cerebro instance
+                cerebro = bt.Cerebro()
+                data = bt.feeds.PandasData(dataname=df)
+                cerebro.adddata(data)
+                cerebro.broker.set_coc(True)
+                cerebro.addstrategy(VipHLStrategy, **params)
 
-            # Run strategy
-            results = cerebro.run()
-            strat = results[0]
-            
-            # Extract results
-            result = {
-                **params,
-                'Fit Score': strat.result.get('Fit Score', None),
-                'Total Pnl%': strat.result.get('Total Pnl%', None),
-                'Avg Pnl% per entry': strat.result.get('Avg Pnl% per entry', None),
-                'Trade Count': strat.result.get('Trade Count', None),
-                'Winning entry%': strat.result.get('Winning entry%', None),
-                'Avg Winner%': strat.result.get('Avg Winner%', None),
-                'Avg Loser%': strat.result.get('Avg Loser%', None)
-            }
-            
-        except Exception as e:
-            result = {
-                **params,
-                'Fit Score': None,
-                'Total Pnl%': None,
-                'Avg Pnl% per entry': None,
-                'Trade Count': None,
-                'Winning entry%': None,
-                'Avg Winner%': None,
-                'Avg Loser%': None,
-                'Error': str(e)
-            }
+                # Run strategy
+                results = cerebro.run()
+                strat = results[0]
+                
+                # Extract results
+                result = {
+                    **params,
+                    'Fit Score': strat.result.get('Fit Score', None),
+                    'Total Pnl%': strat.result.get('Total Pnl%', None),
+                    'Avg Pnl% per entry': strat.result.get('Avg Pnl% per entry', None),
+                    'Trade Count': strat.result.get('Trade Count', None),
+                    'Winning entry%': strat.result.get('Winning entry%', None),
+                    'Avg Winner%': strat.result.get('Avg Winner%', None),
+                    'Avg Loser%': strat.result.get('Avg Loser%', None),
+                    'Scale': strat.result.get('Scale', None)
+                }
+                
+            except Exception as e:
+                result = {
+                    **params,
+                    'Fit Score': None,
+                    'Total Pnl%': None,
+                    'Avg Pnl% per entry': None,
+                    'Trade Count': None,
+                    'Winning entry%': None,
+                    'Avg Winner%': None,
+                    'Avg Loser%': None,
+                    'Scale': None,
+                    'Error': str(e)
+                }
 
-        all_results.append(result)
+            all_results.append(result)
 
-        # Print progress
-        if result.get('Fit Score') is not None:
-            print(f"{i+1:5}/{len(param_combinations)} | Fit Score: {result['Fit Score']:.4f} | " +
-                  f"Total PnL%: {result['Total Pnl%']:.2f} | Trades: {result['Trade Count']} | " +
-                  f"k: {params['power_scaling_factor']:.1f} | " +
-                  f"High n/m: {params['high_by_point_n']}/{params['high_by_point_m']} | " +
-                  f"Low n/m: {params['low_by_point_n']}/{params['low_by_point_m']}")
-        else:
-            print(f"{i+1:5}/{len(param_combinations)} | Error: {result.get('Error', 'Unknown')} | " +
-                  f"k: {params['power_scaling_factor']:.1f} | " +
-                  f"High n/m: {params['high_by_point_n']}/{params['high_by_point_m']} | " +
-                  f"Low n/m: {params['low_by_point_n']}/{params['low_by_point_m']}")
+            # Print progress
+            if result.get('Fit Score') is not None:
+                print(f"{i+1:5}/{len(param_combinations)} | Fit Score: {result['Fit Score']:.4f} | " +
+                    f"Total PnL%: {result['Total Pnl%']:.2f} | Trades: {result['Trade Count']} | " +
+                    f"Scale: {result['Scale']:.3f} | " +
+                    f"k: {params['power_scaling_factor']:.1f} | " +
+                    f"High n/m: {params['high_by_point_n']}/{params['high_by_point_m']} | " +
+                    f"Low n/m: {params['low_by_point_n']}/{params['low_by_point_m']}")
+            else:
+                print(f"{i+1:5}/{len(param_combinations)} | Error: {result.get('Error', 'Unknown')} | " +
+                    f"k: {params['power_scaling_factor']:.1f} | " +
+                    f"High n/m: {params['high_by_point_n']}/{params['high_by_point_m']} | " +
+                    f"Low n/m: {params['low_by_point_n']}/{params['low_by_point_m']}")
 
-        # Save results every save_interval iterations
-        if (i + 1) % save_interval == 0:
-            #save_results_to_csv(all_results, f'grid_search_results_partial_{i+1}.csv')
-            save_results_to_csv(all_results, 'grid_search_results_scroing.csv')
-            print(f"Partial results saved at iteration {i+1}")
+            # Save results every save_interval iterations
+            if (i + 1) % save_interval == 0:
+                #save_results_to_csv(all_results, f'grid_search_results_partial_{i+1}.csv')
+                save_results_to_csv(all_results, 'grid_search_results_scroing.csv')
+                print(f"Partial results saved at iteration {i+1}")
 
     
     # Print summary
