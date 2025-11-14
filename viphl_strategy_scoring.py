@@ -44,6 +44,7 @@ class VipHLStrategy(bt.Strategy):
         # HL byP Scoring设置
         ('max_mn_cap', 20),
         ('enable_hl_byp_scoring', True),
+        ('enable_scoring_scale', True),      # Enable/disable scoring-scale system for position sizing and PnL scaling
         ('on_trend_ratio', 1.5),
         ('power_scaling_factor', 1.0),       # k: exponent for window scoring (m**k + n**k)
         ('high_score_scaling_factor', 1.0),  # Weight for high pivot contribution
@@ -374,7 +375,11 @@ class VipHLStrategy(bt.Strategy):
 
         # Calculate entry size with scoring adjustment
         base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])
-        entry_size = math.floor(base_entry_size * combined_score)
+        # Apply scoring to entry size only if scoring-scale system is enabled
+        if self.p.enable_scoring_scale:
+            entry_size = math.floor(base_entry_size * combined_score)
+        else:
+            entry_size = base_entry_size
 
         # Create a new trade
         new_trade = TradeV2(
@@ -434,7 +439,11 @@ class VipHLStrategy(bt.Strategy):
                   f"Combined: {combined_score:.3f}")
 
         # Calculate PnL scale from combined score
-        pnl_scale = self.calculate_pnl_scale(combined_score)
+        # Only apply scaling if scoring-scale system is enabled, otherwise use neutral scale of 1.0
+        if self.p.enable_scoring_scale:
+            pnl_scale = self.calculate_pnl_scale(combined_score)
+        else:
+            pnl_scale = 1.0
 
         # Calculate entry size WITHOUT scoring adjustment (use base size only)
         base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])

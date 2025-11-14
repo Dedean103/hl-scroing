@@ -77,6 +77,7 @@ def run_strategy_and_plot(csv_file='BTC.csv', save_plot=True):
         'high_by_point_m_on_trend': strat.params.high_by_point_m_on_trend,
         'low_by_point_n_on_trend': strat.params.low_by_point_n_on_trend,
         'low_by_point_m_on_trend': strat.params.low_by_point_m_on_trend,
+        'enable_scoring_scale': strat.params.enable_scoring_scale,
     }
 
     plot_trade_results(

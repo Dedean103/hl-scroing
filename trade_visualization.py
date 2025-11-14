@@ -126,6 +126,7 @@ PnL Scale: {result_stats.get('Scale', 0):.3f}"""
         params_text = f"""
 ━━━━━━━━━━━━━━━━━━━━
 Strategy Parameters:
+Scoring-Scale: {'Enabled' if strategy_params.get('enable_scoring_scale', True) else 'Disabled'}
 High: n={strategy_params.get('high_by_point_n', 'N/A')}, m={strategy_params.get('high_by_point_m', 'N/A')}
 Low: n={strategy_params.get('low_by_point_n', 'N/A')}, m={strategy_params.get('low_by_point_m', 'N/A')}
 On Trend High: n={strategy_params.get('high_by_point_n_on_trend', 'N/A')}, m={strategy_params.get('high_by_point_m_on_trend', 'N/A')}
@@ -214,6 +215,7 @@ def plot_trade_results_from_strategy(strategy_instance, title="Trade Visualizati
         'high_by_point_m_on_trend': strategy_instance.params.high_by_point_m_on_trend,
         'low_by_point_n_on_trend': strategy_instance.params.low_by_point_n_on_trend,
         'low_by_point_m_on_trend': strategy_instance.params.low_by_point_m_on_trend,
+        'enable_scoring_scale': strategy_instance.params.enable_scoring_scale,
     }
 
     # Convert backtrader data to pandas DataFrame
