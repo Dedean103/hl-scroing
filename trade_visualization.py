@@ -8,7 +8,7 @@ from backtrader import num2date
 
 
 def plot_trade_results(dataframe, trade_list, trade_scales, lines_info, result_stats,
-                       title="Trade Visualization", save_filename=None):
+                       title="Trade Visualization", save_filename=None, strategy_params=None):
     """
     Visualize trading strategy results with entry/exit markers and performance statistics
 
@@ -20,6 +20,7 @@ def plot_trade_results(dataframe, trade_list, trade_scales, lines_info, result_s
     - result_stats: dict with strategy performance metrics
     - title: chart title
     - save_filename: optional filename to save the plot
+    - strategy_params: optional dict with strategy parameters (m, n values)
     """
 
     # Setup figure
@@ -59,21 +60,13 @@ def plot_trade_results(dataframe, trade_list, trade_scales, lines_info, result_s
         scale = trade_scales.get(id(trade), 1.0)
         pnl = trade.pnl
 
-        # Calculate marker size based on PnL scale (1-3 -> size 100-300)
-        marker_size = 100 + (scale - 1.0) * 100
+        # Calculate marker size based on PnL scale (1-3 -> size 50-150, smaller)
+        marker_size = 50 + (scale - 1.0) * 50
 
-        # Entry marker (blue, always)
+        # Entry marker (blue, always) - more transparent
         ax.scatter(entry_date, entry_price, s=marker_size,
-                  color='blue', marker='^', alpha=0.7,
+                  color='blue', marker='^', alpha=0.3,
                   edgecolors='darkblue', linewidths=1.5, zorder=5)
-
-        # Annotate entry with trade number
-        ax.annotate(f'#{idx+1}',
-                   xy=(entry_date, entry_price),
-                   xytext=(0, 15), textcoords='offset points',
-                   fontsize=9, color='blue', fontweight='bold',
-                   ha='center', bbox=dict(boxstyle='round,pad=0.3',
-                   facecolor='lightblue', alpha=0.7, edgecolor='blue'))
 
         # Exit markers (if trade is closed)
         if not trade.is_open:
@@ -86,9 +79,9 @@ def plot_trade_results(dataframe, trade_list, trade_scales, lines_info, result_s
                 first_exit_date = num2date(trade.first_time)
                 first_exit_price = entry_price * (1 + trade.first_return / 100)
 
-                # Plot exit marker
+                # Plot exit marker - more transparent
                 ax.scatter(first_exit_date, first_exit_price, s=marker_size,
-                          color=exit_color, marker='v', alpha=0.7,
+                          color=exit_color, marker='v', alpha=0.3,
                           edgecolors=exit_dark_color, linewidths=1.5, zorder=5)
 
                 # Draw line from entry to exit
@@ -97,24 +90,14 @@ def plot_trade_results(dataframe, trade_list, trade_scales, lines_info, result_s
                        color=exit_color, linestyle=':', linewidth=1.5,
                        alpha=0.5, zorder=3)
 
-                # Annotate PnL
-                y_offset = -20 if pnl < 0 else 15
-                ax.annotate(f'{pnl:.1f}%',
-                           xy=(first_exit_date, first_exit_price),
-                           xytext=(0, y_offset), textcoords='offset points',
-                           fontsize=9, color=exit_dark_color, fontweight='bold',
-                           ha='center', bbox=dict(boxstyle='round,pad=0.3',
-                           facecolor='lightgreen' if pnl > 0 else 'lightcoral',
-                           alpha=0.7, edgecolor=exit_dark_color))
-
             # Second exit (if partial exit occurred)
             if trade.take_profit and trade.second_time > 0:
                 second_exit_date = num2date(trade.second_time)
                 second_exit_price = entry_price * (1 + trade.second_return / 100)
 
-                # Plot second exit marker (slightly smaller)
+                # Plot second exit marker (slightly smaller) - more transparent
                 ax.scatter(second_exit_date, second_exit_price, s=marker_size*0.8,
-                          color=exit_color, marker='v', alpha=0.6,
+                          color=exit_color, marker='v', alpha=0.25,
                           edgecolors=exit_dark_color, linewidths=1.5, zorder=5)
 
                 # Draw line from first exit to second exit
@@ -137,6 +120,17 @@ Avg Winner: {result_stats.get('Avg Winner%', 0):.2f}%
 Avg Loser: {result_stats.get('Avg Loser%', 0):.2f}%
 Fit Score: {result_stats.get('Fit Score', 0):.2f}
 PnL Scale: {result_stats.get('Scale', 0):.3f}"""
+
+    # Add parameters section if provided
+    if strategy_params:
+        params_text = f"""
+━━━━━━━━━━━━━━━━━━━━
+Strategy Parameters:
+High: n={strategy_params.get('high_by_point_n', 'N/A')}, m={strategy_params.get('high_by_point_m', 'N/A')}
+Low: n={strategy_params.get('low_by_point_n', 'N/A')}, m={strategy_params.get('low_by_point_m', 'N/A')}
+On Trend High: n={strategy_params.get('high_by_point_n_on_trend', 'N/A')}, m={strategy_params.get('high_by_point_m_on_trend', 'N/A')}
+On Trend Low: n={strategy_params.get('low_by_point_n_on_trend', 'N/A')}, m={strategy_params.get('low_by_point_m_on_trend', 'N/A')}"""
+        stats_text += params_text
 
     # Position textbox in top-left corner
     ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, fontsize=12,
@@ -210,6 +204,18 @@ def plot_trade_results_from_strategy(strategy_instance, title="Trade Visualizati
     lines_info = strategy_instance.lines_info
     result_stats = strategy_instance.result
 
+    # Extract strategy parameters
+    strategy_params = {
+        'high_by_point_n': strategy_instance.params.high_by_point_n,
+        'high_by_point_m': strategy_instance.params.high_by_point_m,
+        'low_by_point_n': strategy_instance.params.low_by_point_n,
+        'low_by_point_m': strategy_instance.params.low_by_point_m,
+        'high_by_point_n_on_trend': strategy_instance.params.high_by_point_n_on_trend,
+        'high_by_point_m_on_trend': strategy_instance.params.high_by_point_m_on_trend,
+        'low_by_point_n_on_trend': strategy_instance.params.low_by_point_n_on_trend,
+        'low_by_point_m_on_trend': strategy_instance.params.low_by_point_m_on_trend,
+    }
+
     # Convert backtrader data to pandas DataFrame
     dates = [strategy_instance.data.datetime.datetime(i)
             for i in range(-len(strategy_instance.data), 0)]
@@ -225,7 +231,7 @@ def plot_trade_results_from_strategy(strategy_instance, title="Trade Visualizati
     df.set_index('datetime', inplace=True)
 
     return plot_trade_results(df, trade_list, trade_scales, lines_info,
-                             result_stats, title, save_filename)
+                             result_stats, title, save_filename, strategy_params)
 
 
 # Example usage when importing

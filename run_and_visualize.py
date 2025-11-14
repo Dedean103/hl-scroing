@@ -67,6 +67,18 @@ def run_strategy_and_plot(csv_file='BTC.csv', save_plot=True):
     if save_plot:
         save_filename = f"{ticker}_trade_results.png"
 
+    # Extract strategy parameters for display
+    strategy_params = {
+        'high_by_point_n': strat.params.high_by_point_n,
+        'high_by_point_m': strat.params.high_by_point_m,
+        'low_by_point_n': strat.params.low_by_point_n,
+        'low_by_point_m': strat.params.low_by_point_m,
+        'high_by_point_n_on_trend': strat.params.high_by_point_n_on_trend,
+        'high_by_point_m_on_trend': strat.params.high_by_point_m_on_trend,
+        'low_by_point_n_on_trend': strat.params.low_by_point_n_on_trend,
+        'low_by_point_m_on_trend': strat.params.low_by_point_m_on_trend,
+    }
+
     plot_trade_results(
         dataframe=dataframe,
         trade_list=strat.trade_list,
@@ -74,7 +86,8 @@ def run_strategy_and_plot(csv_file='BTC.csv', save_plot=True):
         lines_info=strat.lines_info,
         result_stats=strat.result,
         title=title,
-        save_filename=save_filename
+        save_filename=save_filename,
+        strategy_params=strategy_params
     )
 
     return strat, dataframe
