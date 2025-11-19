@@ -100,6 +100,8 @@ class VipHLStrategy(bt.Strategy):
         ('stop_gain_pt', 30.0),  # Equivalent to stopGainPt
         ('toggle_pnl', True), #what is this?
         ('debug_mode', False),  # Enable/disable debug printing
+        ('debug_log_file', 'debug_log.txt'),  # File to save debug logs
+        ('save_debug_to_file', True),  # Enable/disable saving debug to file
     )
 
     def log(self, txt, dt=None, doprint=True):
@@ -107,6 +109,59 @@ class VipHLStrategy(bt.Strategy):
         if doprint:
             dt = dt or self.datas[0].datetime.date(0)
             print('%s, %s' % (dt.isoformat(), txt))
+
+    def debug_log(self, message, to_console=True, to_file=None):
+        """
+        Enhanced debug logging that can output to both console and file
+        
+        Parameters:
+        - message: The debug message to log
+        - to_console: Whether to print to console (default: True)  
+        - to_file: Whether to save to file (default: uses save_debug_to_file parameter)
+        """
+        # Determine file logging preference
+        if to_file is None:
+            to_file = self.p.save_debug_to_file
+            
+        # If neither console nor file output is enabled, return early
+        if not (self.p.debug_mode and to_console) and not to_file:
+            return
+            
+        # Add timestamp
+        if hasattr(self, 'data') and len(self.data) > 0:
+            timestamp = f"[{self.data.datetime.date(0)} {self.data.datetime.time(0)}] "
+        else:
+            from datetime import datetime
+            timestamp = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
+        
+        formatted_message = timestamp + message
+        
+        # Console output (only if debug_mode is True)
+        if self.p.debug_mode and to_console:
+            print(formatted_message)
+        
+        # File output (can work independently of debug_mode)
+        if to_file and self.p.debug_log_file:
+            try:
+                with open(self.p.debug_log_file, 'a', encoding='utf-8') as f:
+                    f.write(formatted_message + '\n')
+            except Exception as e:
+                print(f"Warning: Could not write to debug file {self.p.debug_log_file}: {e}")
+
+    def init_debug_log_file(self):
+        """Initialize/clear the debug log file at the start of strategy"""
+        if self.p.save_debug_to_file and self.p.debug_log_file:
+            try:
+                with open(self.p.debug_log_file, 'w', encoding='utf-8') as f:
+                    f.write("=== VipHL Strategy Debug Log ===\n")
+                    f.write(f"Strategy started at: {self.data.datetime.date(0) if hasattr(self, 'data') and len(self.data) > 0 else 'Unknown'}\n")
+                    f.write(f"Dynamic mn enabled: {self.p.dynamic_mn_enabled}\n")
+                    if self.p.dynamic_mn_enabled:
+                        f.write(f"Dynamic mn range: {self.p.dynamic_mn_start} to {self.p.max_mn_cap}\n")
+                    f.write("=" * 50 + "\n\n")
+                print(f"Debug log initialized: {self.p.debug_log_file}")
+            except Exception as e:
+                print(f"Warning: Could not initialize debug file {self.p.debug_log_file}: {e}")
 
     def calculate_hl_byp_score(self, m, n, pivot_type='high', is_trending=False):
         '''Calculate normalized HL byP score (0-1) based on m,n parameters with power scaling'''
@@ -132,11 +187,12 @@ class VipHLStrategy(bt.Strategy):
         final_score = min(window_score * weight_multiplier / max_possible_weight, 1.0)
 
         # Debug logging
-        if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
-            print(f"[DEBUG] HL Score - Type: {pivot_type}, Trending: {is_trending}, "
-                  f"k: {k:.2f}, m+n: {m+n}, m^k+n^k: {m**k + n**k:.3f}, "
-                  f"Window: {window_score:.3f}, Weight: {weight_multiplier:.3f}, "
-                  f"MaxWeight: {max_possible_weight:.3f}, Final: {final_score:.3f}")
+        if (self.p.debug_mode or self.p.save_debug_to_file) and hasattr(self, 'data') and len(self.data) > 0:
+            debug_msg = (f"HL Score - Type: {pivot_type}, Trending: {is_trending}, "
+                        f"k: {k:.2f}, m+n: {m+n}, m^k+n^k: {m**k + n**k:.3f}, "
+                        f"Window: {window_score:.3f}, Weight: {weight_multiplier:.3f}, "
+                        f"MaxWeight: {max_possible_weight:.3f}, Final: {final_score:.3f}")
+            self.debug_log(debug_msg)
 
         return final_score
 
@@ -165,8 +221,8 @@ class VipHLStrategy(bt.Strategy):
         # Examples: score=0.1→1.63, score=0.5→2.41, score=1.0→3.00
 
         # Debug logging
-        if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
-            print(f"[DEBUG] PnL Scale - Score: {combined_score:.3f}, Scale: {scale:.3f}")
+        if (self.p.debug_mode or self.p.save_debug_to_file) and hasattr(self, 'data') and len(self.data) > 0:
+            self.debug_log(f"PnL Scale - Score: {combined_score:.3f}, Scale: {scale:.3f}")
 
         return scale
 
@@ -245,22 +301,29 @@ class VipHLStrategy(bt.Strategy):
         pivot_found = (best_m is not None)
         
         # Comprehensive logging
-        if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
+        if (self.p.debug_mode or self.p.save_debug_to_file) and hasattr(self, 'data') and len(self.data) > 0:
             date_str = self.data.datetime.date(0).isoformat()
             time_str = self.data.datetime.time(0).isoformat()
             price = self.data.high[0] if pivot_type == 'high' else self.data.low[0]
             trending = "TRENDING" if self.is_ma_trending[0] else "NORMAL"
             
-            print(f"\n[DYNAMIC-{pivot_type.upper()}] Bar {bar_index} | {date_str} {time_str} | Price: {price:.2f} | {trending}")
+            # Main pivot detection header
+            header_msg = f"[DYNAMIC-{pivot_type.upper()}] Bar {bar_index} | {date_str} {time_str} | Price: {price:.2f} | {trending}"
+            self.debug_log(header_msg)
             
+            # Test results for each mn value
             for m, n, valid in tested_windows:
                 status = "✓ PASS" if valid else "✗ FAIL"
-                print(f"  mn={m:2d} -> {status}")
+                test_msg = f"  mn={m:2d} -> {status}"
+                self.debug_log(test_msg)
             
+            # Final result
             if pivot_found:
-                print(f"  🎯 PIVOT CONFIRMED with mn={best_m} | Score will use m={best_m}, n={best_n}")
+                result_msg = f"  🎯 PIVOT CONFIRMED with mn={best_m} | Score will use m={best_m}, n={best_n}"
             else:
-                print(f"  ❌ NO PIVOT FOUND")
+                result_msg = f"  ❌ NO PIVOT FOUND"
+            self.debug_log(result_msg)
+            self.debug_log("")  # Add blank line for readability
         
         return (best_m, best_n, pivot_found)
 
@@ -311,6 +374,10 @@ class VipHLStrategy(bt.Strategy):
             raise ValueError(f"high_score_scaling_factor must be positive, got {self.p.high_score_scaling_factor}")
         if self.p.low_score_scaling_factor <= 0:
             raise ValueError(f"low_score_scaling_factor must be positive, got {self.p.low_score_scaling_factor}")
+
+        # Initialize debug logging
+        if self.p.save_debug_to_file:
+            self.init_debug_log_file()
 
         '''
         viphl
@@ -418,15 +485,15 @@ class VipHLStrategy(bt.Strategy):
             high_m, high_n, high_found = self.find_dynamic_pivot(current_bar, 'high')
             if high_found:
                 high_score = self.calculate_hl_byp_score(high_m, high_n, 'high', self.is_ma_trending[0])
-                if self.p.debug_mode:
-                    print(f"  📊 HIGH PIVOT SCORE: {high_score:.4f} (m={high_m}, n={high_n})")
+                if self.p.debug_mode or self.p.save_debug_to_file:
+                    self.debug_log(f"  📊 HIGH PIVOT SCORE: {high_score:.4f} (m={high_m}, n={high_n})")
             
             # Test for low pivot with dynamic mn  
             low_m, low_n, low_found = self.find_dynamic_pivot(current_bar, 'low')
             if low_found:
                 low_score = self.calculate_hl_byp_score(low_m, low_n, 'low', self.is_ma_trending[0])
-                if self.p.debug_mode:
-                    print(f"  📊 LOW PIVOT SCORE: {low_score:.4f} (m={low_m}, n={low_n})")
+                if self.p.debug_mode or self.p.save_debug_to_file:
+                    self.debug_log(f"  📊 LOW PIVOT SCORE: {low_score:.4f} (m={low_m}, n={low_n})")
 
         # logic hidden?
         # Update the recovery window(站稳)
@@ -510,10 +577,11 @@ class VipHLStrategy(bt.Strategy):
         combined_score = (weighted_high + weighted_low) / total_weight
 
         # Debug logging for weighted scoring
-        if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
-            print(f"[DEBUG] Combined Score - High: {high_score:.3f}*{self.p.high_score_scaling_factor:.1f}={weighted_high:.3f}, "
-                  f"Low: {low_score:.3f}*{self.p.low_score_scaling_factor:.1f}={weighted_low:.3f}, "
-                  f"Combined: {combined_score:.3f}")
+        if (self.p.debug_mode or self.p.save_debug_to_file) and hasattr(self, 'data') and len(self.data) > 0:
+            debug_msg = (f"Combined Score - High: {high_score:.3f}*{self.p.high_score_scaling_factor:.1f}={weighted_high:.3f}, "
+                        f"Low: {low_score:.3f}*{self.p.low_score_scaling_factor:.1f}={weighted_low:.3f}, "
+                        f"Combined: {combined_score:.3f}")
+            self.debug_log(debug_msg)
 
         # Calculate entry size with scoring adjustment
         base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])
@@ -562,10 +630,11 @@ class VipHLStrategy(bt.Strategy):
         combined_score = (weighted_high + weighted_low) / total_weight
 
         # Debug logging for weighted scoring
-        if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
-            print(f"[DEBUG] Combined Score - High: {high_score:.3f}*{self.p.high_score_scaling_factor:.1f}={weighted_high:.3f}, "
-                  f"Low: {low_score:.3f}*{self.p.low_score_scaling_factor:.1f}={weighted_low:.3f}, "
-                  f"Combined: {combined_score:.3f}")
+        if (self.p.debug_mode or self.p.save_debug_to_file) and hasattr(self, 'data') and len(self.data) > 0:
+            debug_msg = (f"Combined Score - High: {high_score:.3f}*{self.p.high_score_scaling_factor:.1f}={weighted_high:.3f}, "
+                        f"Low: {low_score:.3f}*{self.p.low_score_scaling_factor:.1f}={weighted_low:.3f}, "
+                        f"Combined: {combined_score:.3f}")
+            self.debug_log(debug_msg)
 
         # Calculate PnL scale from combined score
         # Only apply scaling if scoring-scale system is enabled, otherwise use neutral scale of 1.0
@@ -805,7 +874,12 @@ if __name__ == '__main__':
         power_scaling_factor= 1.0,      # k: 1.0 (linear), >1 (exponential), <1 (diminishing)
         high_score_scaling_factor= 0.5,  # Weight for high pivot contribution
         low_score_scaling_factor= 0.5,   # Weight for low pivot contribution
+        
+        # Debug logging settings
         debug_mode=True,  # Enable debug printing to see dynamic mn detection
+        save_debug_to_file=True,  # Save debug logs to file
+        debug_log_file="dynamic_mn_debug.txt",  # Debug log filename
+        
         # uncomment to change configurations
         # close_above_low_threshold=0.5,
         on_trend_ratio=1,

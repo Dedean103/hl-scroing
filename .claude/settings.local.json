@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python analyze_scale_distribution.py:*)"
+      "Bash(python analyze_scale_distribution.py:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

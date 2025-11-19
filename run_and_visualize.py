@@ -49,7 +49,12 @@ def run_strategy_and_plot(csv_file='BTC.csv', save_plot=True):
         power_scaling_factor=1.5,
         high_score_scaling_factor=0.5,
         low_score_scaling_factor=0.5,
-        debug_mode=False,           # Set to True to see dynamic mn detection logs
+        
+        # Debug logging settings
+        debug_mode=False,           # Disable console output to avoid spam
+        save_debug_to_file=True,    # Save debug logs to file
+        debug_log_file="run_and_visualize_debug.txt",  # Debug log filename
+        
         on_trend_ratio=1,
     )
 
