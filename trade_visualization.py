@@ -123,14 +123,28 @@ PnL Scale: {result_stats.get('Scale', 0):.3f}"""
 
     # Add parameters section if provided
     if strategy_params:
-        params_text = f"""
+        # Handle dynamic mn parameters
+        dynamic_enabled = strategy_params.get('dynamic_mn_enabled', False)
+        
+        if dynamic_enabled:
+            params_text = f"""
 ━━━━━━━━━━━━━━━━━━━━
 Strategy Parameters:
 Scoring-Scale: {'Enabled' if strategy_params.get('enable_scoring_scale', True) else 'Disabled'}
+Dynamic mn: Enabled ({strategy_params.get('dynamic_mn_start', 4)} to {strategy_params.get('max_mn_cap', 20)})
+Static Fallback High: n={strategy_params.get('high_by_point_n', 'N/A')}, m={strategy_params.get('high_by_point_m', 'N/A')}
+Static Fallback Low: n={strategy_params.get('low_by_point_n', 'N/A')}, m={strategy_params.get('low_by_point_m', 'N/A')}"""
+        else:
+            params_text = f"""
+━━━━━━━━━━━━━━━━━━━━
+Strategy Parameters:
+Scoring-Scale: {'Enabled' if strategy_params.get('enable_scoring_scale', True) else 'Disabled'}
+Dynamic mn: Disabled
 High: n={strategy_params.get('high_by_point_n', 'N/A')}, m={strategy_params.get('high_by_point_m', 'N/A')}
 Low: n={strategy_params.get('low_by_point_n', 'N/A')}, m={strategy_params.get('low_by_point_m', 'N/A')}
 On Trend High: n={strategy_params.get('high_by_point_n_on_trend', 'N/A')}, m={strategy_params.get('high_by_point_m_on_trend', 'N/A')}
 On Trend Low: n={strategy_params.get('low_by_point_n_on_trend', 'N/A')}, m={strategy_params.get('low_by_point_m_on_trend', 'N/A')}"""
+        
         stats_text += params_text
 
     # Position textbox in top-left corner
@@ -207,6 +221,9 @@ def plot_trade_results_from_strategy(strategy_instance, title="Trade Visualizati
 
     # Extract strategy parameters
     strategy_params = {
+        'dynamic_mn_enabled': strategy_instance.params.dynamic_mn_enabled,
+        'dynamic_mn_start': strategy_instance.params.dynamic_mn_start,
+        'max_mn_cap': strategy_instance.params.max_mn_cap,
         'high_by_point_n': strategy_instance.params.high_by_point_n,
         'high_by_point_m': strategy_instance.params.high_by_point_m,
         'low_by_point_n': strategy_instance.params.low_by_point_n,

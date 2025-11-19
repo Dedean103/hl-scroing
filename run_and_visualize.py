@@ -29,7 +29,14 @@ def run_strategy_and_plot(csv_file='BTC.csv', save_plot=True):
     cerebro.addstrategy(
         VipHLStrategy,
         mintick=0.01,
-        max_mn_cap=12,
+        
+        # Dynamic mn configuration
+        dynamic_mn_enabled=True,    # Enable dynamic mn detection
+        dynamic_mn_start=4,         # Start testing from mn=4
+        dynamic_mn_step=1,          # Increment by 1
+        max_mn_cap=20,              # Maximum mn value
+        
+        # Static fallback parameters
         high_by_point_n=14,
         high_by_point_m=14,
         low_by_point_n=14,
@@ -38,10 +45,11 @@ def run_strategy_and_plot(csv_file='BTC.csv', save_plot=True):
         high_by_point_m_on_trend=4,
         low_by_point_n_on_trend=14,
         low_by_point_m_on_trend=14,
+        
         power_scaling_factor=1.5,
         high_score_scaling_factor=0.5,
         low_score_scaling_factor=0.5,
-        debug_mode=False,
+        debug_mode=False,           # Set to True to see dynamic mn detection logs
         on_trend_ratio=1,
     )
 
@@ -69,6 +77,9 @@ def run_strategy_and_plot(csv_file='BTC.csv', save_plot=True):
 
     # Extract strategy parameters for display
     strategy_params = {
+        'dynamic_mn_enabled': strat.params.dynamic_mn_enabled,
+        'dynamic_mn_start': strat.params.dynamic_mn_start,
+        'max_mn_cap': strat.params.max_mn_cap,
         'high_by_point_n': strat.params.high_by_point_n,
         'high_by_point_m': strat.params.high_by_point_m,
         'low_by_point_n': strat.params.low_by_point_n,

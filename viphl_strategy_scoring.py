@@ -50,6 +50,11 @@ class VipHLStrategy(bt.Strategy):
         ('high_score_scaling_factor', 1.0),  # Weight for high pivot contribution
         ('low_score_scaling_factor', 1.0),   # Weight for low pivot contribution
 
+        # Dynamic mn Detection设置
+        ('dynamic_mn_enabled', True),        # Enable/disable dynamic mn detection
+        ('dynamic_mn_start', 4),            # Starting m=n value for dynamic detection
+        ('dynamic_mn_step', 1),             # Increment step for dynamic detection (usually 1)
+
         # HL Violation设置
         ('bar_count_to_by_point', 800),
         ('bar_cross_threshold', 5),
@@ -165,6 +170,139 @@ class VipHLStrategy(bt.Strategy):
 
         return scale
 
+    def validate_pivot_with_mn(self, bar_index, m, n, pivot_type):
+        """
+        Validate if bar_index is a pivot with given m,n window
+        Returns True if the bar is a valid pivot, False otherwise
+        """
+        # Check bounds - need n bars on left and m bars on right
+        if (bar_index - n < 0) or (bar_index + m >= len(self.data)):
+            return False
+        
+        if pivot_type == 'high':
+            center_price = self.data.high[bar_index]
+            
+            # Check left side: all bars must be lower than center
+            for i in range(bar_index - n, bar_index):
+                if self.data.high[i] >= center_price:
+                    return False
+                    
+            # Check right side: all bars must be lower than center  
+            for i in range(bar_index + 1, bar_index + m + 1):
+                if self.data.high[i] >= center_price:
+                    return False
+                    
+        else:  # low pivot
+            center_price = self.data.low[bar_index]
+            
+            # Check left side: all bars must be higher than center
+            for i in range(bar_index - n, bar_index):
+                if self.data.low[i] <= center_price:
+                    return False
+                    
+            # Check right side: all bars must be higher than center
+            for i in range(bar_index + 1, bar_index + m + 1):
+                if self.data.low[i] <= center_price:
+                    return False
+        
+        return True
+
+    def find_dynamic_pivot(self, bar_index, pivot_type='high'):
+        """
+        Progressive pivot validation starting from dynamic_mn_start up to max_mn_cap
+        Returns (best_m, best_n, pivot_confirmed) or (None, None, False)
+        """
+        if not self.p.dynamic_mn_enabled:
+            # Fall back to original static behavior
+            if pivot_type == 'high':
+                m, n = self.p.high_by_point_m, self.p.high_by_point_n
+                if self.is_ma_trending[0]:
+                    m, n = self.p.high_by_point_m_on_trend, self.p.high_by_point_n_on_trend
+            else:
+                m, n = self.p.low_by_point_m, self.p.low_by_point_n
+                if self.is_ma_trending[0]:
+                    m, n = self.p.low_by_point_m_on_trend, self.p.low_by_point_n_on_trend
+            
+            is_valid = self.validate_pivot_with_mn(bar_index, m, n, pivot_type)
+            return (m, n, is_valid)
+        
+        best_m = best_n = None
+        tested_windows = []
+        
+        # Progressive validation from start to max
+        for window_size in range(self.p.dynamic_mn_start, 
+                               self.p.max_mn_cap + 1, 
+                               self.p.dynamic_mn_step):
+            m = n = window_size
+            is_valid = self.validate_pivot_with_mn(bar_index, m, n, pivot_type)
+            tested_windows.append((m, n, is_valid))
+            
+            if is_valid:
+                best_m, best_n = m, n  # Keep expanding
+            else:
+                break  # Failed at this size, stop
+        
+        pivot_found = (best_m is not None)
+        
+        # Comprehensive logging
+        if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
+            date_str = self.data.datetime.date(0).isoformat()
+            time_str = self.data.datetime.time(0).isoformat()
+            price = self.data.high[0] if pivot_type == 'high' else self.data.low[0]
+            trending = "TRENDING" if self.is_ma_trending[0] else "NORMAL"
+            
+            print(f"\n[DYNAMIC-{pivot_type.upper()}] Bar {bar_index} | {date_str} {time_str} | Price: {price:.2f} | {trending}")
+            
+            for m, n, valid in tested_windows:
+                status = "✓ PASS" if valid else "✗ FAIL"
+                print(f"  mn={m:2d} -> {status}")
+            
+            if pivot_found:
+                print(f"  🎯 PIVOT CONFIRMED with mn={best_m} | Score will use m={best_m}, n={best_n}")
+            else:
+                print(f"  ❌ NO PIVOT FOUND")
+        
+        return (best_m, best_n, pivot_found)
+
+    def get_current_mn_values(self):
+        """
+        Get the current m,n values to use for scoring.
+        If dynamic detection is enabled, use the current bar's dynamic values.
+        Otherwise, fall back to static parameters.
+        """
+        if self.p.dynamic_mn_enabled:
+            current_bar = self.bar_index()
+            
+            # Get dynamic mn for high pivots
+            high_m, high_n, high_found = self.find_dynamic_pivot(current_bar, 'high')
+            if not high_found:
+                # Fall back to static values if no dynamic pivot found
+                if self.is_ma_trending[0]:
+                    high_m, high_n = self.p.high_by_point_m_on_trend, self.p.high_by_point_n_on_trend
+                else:
+                    high_m, high_n = self.p.high_by_point_m, self.p.high_by_point_n
+            
+            # Get dynamic mn for low pivots
+            low_m, low_n, low_found = self.find_dynamic_pivot(current_bar, 'low')
+            if not low_found:
+                # Fall back to static values if no dynamic pivot found
+                if self.is_ma_trending[0]:
+                    low_m, low_n = self.p.low_by_point_m_on_trend, self.p.low_by_point_n_on_trend
+                else:
+                    low_m, low_n = self.p.low_by_point_m, self.p.low_by_point_n
+            
+            return (high_m, high_n), (low_m, low_n)
+        else:
+            # Static behavior
+            if self.is_ma_trending[0]:
+                high_mn = (self.p.high_by_point_m_on_trend, self.p.high_by_point_n_on_trend)
+                low_mn = (self.p.low_by_point_m_on_trend, self.p.low_by_point_n_on_trend)
+            else:
+                high_mn = (self.p.high_by_point_m, self.p.high_by_point_n)
+                low_mn = (self.p.low_by_point_m, self.p.low_by_point_n)
+            
+            return high_mn, low_mn
+
     def __init__(self):
         '''init is called once at the last row'''
 
@@ -272,6 +410,23 @@ class VipHLStrategy(bt.Strategy):
         self.viphl.update_built_in_vars(bar_index=self.bar_index(), last_bar_index=self.last_bar_index())
         self.viphl.update(is_ma_trending=self.is_ma_trending, close_avg_percent=self.close_average_percent[0])
 
+        # Dynamic pivot detection (additional layer)
+        if self.p.dynamic_mn_enabled:
+            current_bar = self.bar_index()
+            
+            # Test for high pivot with dynamic mn
+            high_m, high_n, high_found = self.find_dynamic_pivot(current_bar, 'high')
+            if high_found:
+                high_score = self.calculate_hl_byp_score(high_m, high_n, 'high', self.is_ma_trending[0])
+                if self.p.debug_mode:
+                    print(f"  📊 HIGH PIVOT SCORE: {high_score:.4f} (m={high_m}, n={high_n})")
+            
+            # Test for low pivot with dynamic mn  
+            low_m, low_n, low_found = self.find_dynamic_pivot(current_bar, 'low')
+            if low_found:
+                low_score = self.calculate_hl_byp_score(low_m, low_n, 'low', self.is_ma_trending[0])
+                if self.p.debug_mode:
+                    print(f"  📊 LOW PIVOT SCORE: {low_score:.4f} (m={low_m}, n={low_n})")
 
         # logic hidden?
         # Update the recovery window(站稳)
@@ -333,33 +488,20 @@ class VipHLStrategy(bt.Strategy):
         stop_loss_long = min(self.data.low[0], self.data.low[-1])
         stop_loss_percent = (self.data.close[0] - stop_loss_long) / self.data.close[0] * 100
 
-        # Calculate HL byP scores for current market condition
-        if self.is_ma_trending[0]:
-            high_score = self.calculate_hl_byp_score(
-                self.p.high_by_point_m_on_trend, 
-                self.p.high_by_point_n_on_trend, 
-                pivot_type='high', 
-                is_trending=True
-            )
-            low_score = self.calculate_hl_byp_score(
-                self.p.low_by_point_m_on_trend, 
-                self.p.low_by_point_n_on_trend, 
-                pivot_type='low', 
-                is_trending=True
-            )
-        else:
-            high_score = self.calculate_hl_byp_score(
-                self.p.high_by_point_m, 
-                self.p.high_by_point_n, 
-                pivot_type='high', 
-                is_trending=False
-            )
-            low_score = self.calculate_hl_byp_score(
-                self.p.low_by_point_m, 
-                self.p.low_by_point_n, 
-                pivot_type='low', 
-                is_trending=False
-            )
+        # Get current mn values (dynamic or static)
+        (high_m, high_n), (low_m, low_n) = self.get_current_mn_values()
+
+        # Calculate HL byP scores using the determined m,n values
+        high_score = self.calculate_hl_byp_score(
+            high_m, high_n, 
+            pivot_type='high', 
+            is_trending=self.is_ma_trending[0]
+        )
+        low_score = self.calculate_hl_byp_score(
+            low_m, low_n, 
+            pivot_type='low', 
+            is_trending=self.is_ma_trending[0]
+        )
 
         # Combined score for trade size adjustment with scaling factors
         weighted_high = high_score * self.p.high_score_scaling_factor
@@ -398,33 +540,20 @@ class VipHLStrategy(bt.Strategy):
         return new_trade
 
     def record_trade(self, extend_bar_signal_offset):
-        # Calculate HL byP scores for current market condition
-        if self.is_ma_trending[0]:
-            high_score = self.calculate_hl_byp_score(
-                self.p.high_by_point_m_on_trend,
-                self.p.high_by_point_n_on_trend,
-                pivot_type='high',
-                is_trending=True
-            )
-            low_score = self.calculate_hl_byp_score(
-                self.p.low_by_point_m_on_trend,
-                self.p.low_by_point_n_on_trend,
-                pivot_type='low',
-                is_trending=True
-            )
-        else:
-            high_score = self.calculate_hl_byp_score(
-                self.p.high_by_point_m,
-                self.p.high_by_point_n,
-                pivot_type='high',
-                is_trending=False
-            )
-            low_score = self.calculate_hl_byp_score(
-                self.p.low_by_point_m,
-                self.p.low_by_point_n,
-                pivot_type='low',
-                is_trending=False
-            )
+        # Get current mn values (dynamic or static)
+        (high_m, high_n), (low_m, low_n) = self.get_current_mn_values()
+
+        # Calculate HL byP scores using the determined m,n values
+        high_score = self.calculate_hl_byp_score(
+            high_m, high_n,
+            pivot_type='high',
+            is_trending=self.is_ma_trending[0]
+        )
+        low_score = self.calculate_hl_byp_score(
+            low_m, low_n,
+            pivot_type='low',
+            is_trending=self.is_ma_trending[0]
+        )
 
         # Combined score for trade size adjustment with scaling factors
         weighted_high = high_score * self.p.high_score_scaling_factor
@@ -656,7 +785,14 @@ if __name__ == '__main__':
     cerebro.addstrategy(
         VipHLStrategy,
         mintick = 0.01,
-        max_mn_cap = 12,  # HL byP scoring cap (adjustable)
+        max_mn_cap = 20,  # HL byP scoring cap (also max for dynamic mn)
+        
+        # Dynamic mn settings
+        dynamic_mn_enabled = True,   # Enable dynamic mn detection
+        dynamic_mn_start = 4,        # Start testing from mn=4
+        dynamic_mn_step = 1,         # Increment by 1
+        
+        # Static mn settings (fallback values)
         high_by_point_n= 10, # n is the # of bar on the left, m is right
         high_by_point_m= 10,
         low_by_point_n= 10,
@@ -665,10 +801,11 @@ if __name__ == '__main__':
         high_by_point_m_on_trend= 10,
         low_by_point_n_on_trend= 10,
         low_by_point_m_on_trend= 10,
+        
         power_scaling_factor= 1.0,      # k: 1.0 (linear), >1 (exponential), <1 (diminishing)
         high_score_scaling_factor= 0.5,  # Weight for high pivot contribution
         low_score_scaling_factor= 0.5,   # Weight for low pivot contribution
-        debug_mode=False,  # Enable/disable debug printing
+        debug_mode=True,  # Enable debug printing to see dynamic mn detection
         # uncomment to change configurations
         # close_above_low_threshold=0.5,
         on_trend_ratio=1,
