@@ -196,6 +196,11 @@ class VipHLStrategy(bt.Strategy):
 
         return final_score
 
+    def calculate_position_scale(self, combined_score):
+        """Map combined_score to a bounded 1x-3x scaling factor."""
+        scale = 1.0 + 2.0 * combined_score
+        return max(1.0, min(scale, 3.0))
+
     def calculate_pnl_scale(self, combined_score):
         '''
         Maps combined_score (0-1) to PnL scale (1-3)
@@ -213,12 +218,7 @@ class VipHLStrategy(bt.Strategy):
         - score=0.5 → scale=2.00 (midpoint)
         - score=1.0 → scale=3.00 (maximum)
         '''
-        # Linear scaling (current)
-        scale = 1.0 + 2.0 * combined_score
-
-        # Square root scaling (alternative - fast growth at low scores, diminishing returns)
-        # scale = 1.0 + 2.0 * math.sqrt(combined_score)
-        # Examples: score=0.1→1.63, score=0.5→2.41, score=1.0→3.00
+        scale = self.calculate_position_scale(combined_score)
 
         # Debug logging
         if (self.p.debug_mode or self.p.save_debug_to_file) and hasattr(self, 'data') and len(self.data) > 0:
@@ -588,12 +588,16 @@ class VipHLStrategy(bt.Strategy):
             self.debug_log(debug_msg)
 
         # Calculate entry size with scoring adjustment
-        base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])
-        # Apply scoring to entry size only if scoring-scale system is enabled
+        base_entry_size = max(1, math.floor(self.p.order_size_in_usd / self.data.close[0]))
         if self.p.enable_scoring_scale:
-            entry_size = math.floor(base_entry_size * combined_score)
+            size_scale = self.calculate_position_scale(combined_score)
+            entry_size = max(1, math.floor(base_entry_size * size_scale))
         else:
+            size_scale = 1.0
             entry_size = base_entry_size
+
+        if (self.p.debug_mode or self.p.save_debug_to_file) and hasattr(self, 'data') and len(self.data) > 0:
+            self.debug_log(f"Entry Size - Base: {base_entry_size}, Scale: {size_scale:.3f}, Final: {entry_size}")
 
         # Create a new trade
         new_trade = TradeV2(
@@ -644,12 +648,17 @@ class VipHLStrategy(bt.Strategy):
         # Only apply scaling if scoring-scale system is enabled, otherwise use neutral scale of 1.0
         if self.p.enable_scoring_scale:
             pnl_scale = self.calculate_pnl_scale(combined_score)
+            size_scale = pnl_scale
         else:
             pnl_scale = 1.0
+            size_scale = 1.0
 
-        # Calculate entry size WITHOUT scoring adjustment (use base size only)
-        base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])
-        entry_size = base_entry_size
+        # Calculate entry size using bounded scaling (1x - 3x)
+        base_entry_size = max(1, math.floor(self.p.order_size_in_usd / self.data.close[0]))
+        entry_size = max(1, math.floor(base_entry_size * size_scale))
+
+        if (self.p.debug_mode or self.p.save_debug_to_file) and hasattr(self, 'data') and len(self.data) > 0:
+            self.debug_log(f"Entry Size - Base: {base_entry_size}, Scale: {size_scale:.3f}, Final: {entry_size}")
 
         self.trade_list.append(
             TradeV2(
