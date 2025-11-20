@@ -227,42 +227,46 @@ class VipHLStrategy(bt.Strategy):
         return scale
 
     def validate_pivot_with_mn(self, bar_index, m, n, pivot_type):
-        """
-        Validate if bar_index is a pivot with given m,n window
-        Returns True if the bar is a valid pivot, False otherwise
-        """
+        """Validate if a bar is a pivot with the supplied m/n window."""
         # Check bounds - need n bars on left and m bars on right
-        if (bar_index - n < 0) or (bar_index + m >= len(self.data)):
+        # len(self.data) only reflects processed bars. Use the full buffer
+        # length via last_bar_index so future bars are accessible for pivot
+        # validation in backtests.
+        max_index = self.last_bar_index()
+        if (bar_index - n < 0) or (bar_index + m > max_index):
             return False
         
+        # Absolute indexing is easier through the cached numpy arrays
+        high_array = self.data.high.array
+        low_array = self.data.low.array
+        
         if pivot_type == 'high':
-            center_price = self.data.high[bar_index]
+            center_price = high_array[bar_index]
             
             # Check left side: all bars must be lower than center
             for i in range(bar_index - n, bar_index):
-                if self.data.high[i] >= center_price:
+                if high_array[i] >= center_price:
                     return False
                     
             # Check right side: all bars must be lower than center  
             for i in range(bar_index + 1, bar_index + m + 1):
-                if self.data.high[i] >= center_price:
+                if high_array[i] >= center_price:
                     return False
                     
         else:  # low pivot
-            center_price = self.data.low[bar_index]
+            center_price = low_array[bar_index]
             
             # Check left side: all bars must be higher than center
             for i in range(bar_index - n, bar_index):
-                if self.data.low[i] <= center_price:
+                if low_array[i] <= center_price:
                     return False
                     
             # Check right side: all bars must be higher than center
             for i in range(bar_index + 1, bar_index + m + 1):
-                if self.data.low[i] <= center_price:
+                if low_array[i] <= center_price:
                     return False
         
         return True
-
     def find_dynamic_pivot(self, bar_index, pivot_type='high'):
         """
         Progressive pivot validation starting from dynamic_mn_start up to max_mn_cap
