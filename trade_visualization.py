@@ -7,7 +7,7 @@ from datetime import datetime
 from backtrader import num2date
 
 
-def plot_trade_results(dataframe, trade_list, trade_scales, lines_info, result_stats,
+def plot_trade_results(dataframe, trade_list, lines_info, result_stats,
                        title="Trade Visualization", save_filename=None, strategy_params=None):
     """
     Visualize trading strategy results with entry/exit markers and performance statistics
@@ -15,7 +15,6 @@ def plot_trade_results(dataframe, trade_list, trade_scales, lines_info, result_s
     Parameters:
     - dataframe: pandas DataFrame with OHLCV data (index: datetime)
     - trade_list: list of TradeV2 objects from strategy
-    - trade_scales: dict mapping trade id to PnL scale (1-3)
     - lines_info: list of tuples (hl_value, start_bar_index, end_bar_index) for VipHL lines
     - result_stats: dict with strategy performance metrics
     - title: chart title
@@ -52,12 +51,20 @@ def plot_trade_results(dataframe, trade_list, trade_scales, lines_info, result_s
     price_max = dataframe['close'].max()
     price_range = price_max - price_min
 
+    # Determine baseline entry size for relative marker scaling
+    base_entry_size = None
+    for trade in trade_list:
+        if trade.total_entry_size > 0:
+            base_entry_size = trade.total_entry_size if base_entry_size is None else min(base_entry_size, trade.total_entry_size)
+    if base_entry_size is None or base_entry_size == 0:
+        base_entry_size = 1
+
     # Plot trade entry and exit markers
     for idx, trade in enumerate(trade_list):
         # Get trade info
         entry_date = num2date(trade.entry_time)
         entry_price = trade.entry_price
-        scale = trade_scales.get(id(trade), 1.0)
+        scale = max(1.0, trade.total_entry_size / base_entry_size)
         pnl = trade.pnl
 
         # Calculate marker size based on PnL scale (1-3 -> size 50-150, smaller)
@@ -119,7 +126,7 @@ Win Rate: {result_stats.get('Winning entry%', 0):.2f}%
 Avg Winner: {result_stats.get('Avg Winner%', 0):.2f}%
 Avg Loser: {result_stats.get('Avg Loser%', 0):.2f}%
 Fit Score: {result_stats.get('Fit Score', 0):.2f}
-PnL Scale: {result_stats.get('Scale', 0):.3f}"""
+"""
 
     # Add parameters section if provided
     if strategy_params:
@@ -215,7 +222,6 @@ def plot_trade_results_from_strategy(strategy_instance, title="Trade Visualizati
     # Extract data from strategy
     dataframe = strategy_instance.data
     trade_list = strategy_instance.trade_list
-    trade_scales = strategy_instance.trade_scales
     lines_info = strategy_instance.lines_info
     result_stats = strategy_instance.result
 
@@ -249,7 +255,7 @@ def plot_trade_results_from_strategy(strategy_instance, title="Trade Visualizati
     })
     df.set_index('datetime', inplace=True)
 
-    return plot_trade_results(df, trade_list, trade_scales, lines_info,
+    return plot_trade_results(df, trade_list, lines_info,
                              result_stats, title, save_filename, strategy_params)
 
 

@@ -10667,7 +10667,6 @@ Dynamic mn range: 4 to 20
 [2023-10-19 11:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2023-10-19 11:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2023-10-19 11:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2023-10-19 11:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2023-10-19 11:00:00] Entry Size - Base: 69, Scale: 2.171, Final: 149
 [2023-10-20 11:00:00] [DYNAMIC-HIGH] Bar 669 | 2023-10-20 11:00:00 | Price: 30207.55 | NORMAL
 [2023-10-20 11:00:00]   mn= 4 -> ✗ FAIL
@@ -11282,7 +11281,6 @@ Dynamic mn range: 4 to 20
 [2023-11-16 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 60.383, Window: 0.338, Weight: 1.000, MaxWeight: 1.000, Final: 0.338
 [2023-11-16 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2023-11-16 11:00:00] Combined Score - High: 0.338*0.5=0.169, Low: 0.586*0.5=0.293, Combined: 0.462
-[2023-11-16 11:00:00] PnL Scale - Score: 0.462, Scale: 1.923
 [2023-11-16 11:00:00] Entry Size - Base: 55, Scale: 1.923, Final: 105
 [2023-11-17 11:00:00] [DYNAMIC-HIGH] Bar 697 | 2023-11-17 11:00:00 | Price: 36800.00 | TRENDING
 [2023-11-17 11:00:00]   mn= 4 -> ✗ FAIL
@@ -11423,7 +11421,6 @@ Dynamic mn range: 4 to 20
 [2023-11-22 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 60.383, Window: 0.338, Weight: 1.000, MaxWeight: 1.000, Final: 0.338
 [2023-11-22 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 10, m^k+n^k: 22.361, Window: 0.125, Weight: 1.000, MaxWeight: 1.000, Final: 0.125
 [2023-11-22 11:00:00] Combined Score - High: 0.338*0.5=0.169, Low: 0.125*0.5=0.062, Combined: 0.231
-[2023-11-22 11:00:00] PnL Scale - Score: 0.231, Scale: 1.463
 [2023-11-22 11:00:00] Entry Size - Base: 53, Scale: 1.463, Final: 77
 [2023-11-23 11:00:00] [DYNAMIC-HIGH] Bar 703 | 2023-11-23 11:00:00 | Price: 37653.44 | TRENDING
 [2023-11-23 11:00:00]   mn= 4 -> ✗ FAIL
@@ -11584,7 +11581,6 @@ Dynamic mn range: 4 to 20
 [2023-11-29 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 60.383, Window: 0.338, Weight: 1.000, MaxWeight: 1.000, Final: 0.338
 [2023-11-29 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2023-11-29 11:00:00] Combined Score - High: 0.338*0.5=0.169, Low: 0.586*0.5=0.293, Combined: 0.462
-[2023-11-29 11:00:00] PnL Scale - Score: 0.462, Scale: 1.923
 [2023-11-29 11:00:00] Entry Size - Base: 52, Scale: 1.923, Final: 100
 [2023-11-30 11:00:00] [DYNAMIC-HIGH] Bar 710 | 2023-11-30 11:00:00 | Price: 38145.85 | TRENDING
 [2023-11-30 11:00:00]   mn= 4 -> ✗ FAIL
@@ -12887,7 +12883,6 @@ Dynamic mn range: 4 to 20
 [2024-01-23 11:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-01-23 11:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 40, m^k+n^k: 178.885, Window: 1.000, Weight: 1.000, MaxWeight: 1.000, Final: 1.000
 [2024-01-23 11:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 1.000*0.5=0.500, Combined: 0.793
-[2024-01-23 11:00:00] PnL Scale - Score: 0.793, Scale: 2.586
 [2024-01-23 11:00:00] Entry Size - Base: 50, Scale: 2.586, Final: 129
 [2024-01-24 11:00:00] [DYNAMIC-HIGH] Bar 765 | 2024-01-24 11:00:00 | Price: 40555.00 | NORMAL
 [2024-01-24 11:00:00]   mn= 4 -> ✗ FAIL
@@ -12960,7 +12955,6 @@ Dynamic mn range: 4 to 20
 [2024-01-26 11:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-01-26 11:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-01-26 11:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2024-01-26 11:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2024-01-26 11:00:00] Entry Size - Base: 47, Scale: 2.171, Final: 102
 [2024-01-27 11:00:00] [DYNAMIC-HIGH] Bar 768 | 2024-01-27 11:00:00 | Price: 42200.00 | NORMAL
 [2024-01-27 11:00:00]   mn= 4 -> ✗ FAIL
@@ -13123,7 +13117,6 @@ Dynamic mn range: 4 to 20
 [2024-02-02 11:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-02-02 11:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-02-02 11:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2024-02-02 11:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2024-02-02 11:00:00] Entry Size - Base: 46, Scale: 2.171, Final: 99
 [2024-02-03 11:00:00] [DYNAMIC-HIGH] Bar 775 | 2024-02-03 11:00:00 | Price: 43380.01 | NORMAL
 [2024-02-03 11:00:00]   mn= 4 -> ✗ FAIL
@@ -13216,7 +13209,6 @@ Dynamic mn range: 4 to 20
 [2024-02-06 11:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-02-06 11:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-02-06 11:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2024-02-06 11:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2024-02-06 11:00:00] Entry Size - Base: 46, Scale: 2.171, Final: 99
 [2024-02-07 11:00:00] [DYNAMIC-HIGH] Bar 779 | 2024-02-07 11:00:00 | Price: 44396.50 | TRENDING
 [2024-02-07 11:00:00]   mn= 4 -> ✗ FAIL
@@ -14051,7 +14043,6 @@ Dynamic mn range: 4 to 20
 [2024-03-14 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 40, m^k+n^k: 178.885, Window: 1.000, Weight: 1.000, MaxWeight: 1.000, Final: 1.000
 [2024-03-14 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-03-14 11:00:00] Combined Score - High: 1.000*0.5=0.500, Low: 0.586*0.5=0.293, Combined: 0.793
-[2024-03-14 11:00:00] PnL Scale - Score: 0.793, Scale: 2.586
 [2024-03-14 11:00:00] Entry Size - Base: 28, Scale: 2.586, Final: 72
 [2024-03-15 11:00:00] [DYNAMIC-HIGH] Bar 816 | 2024-03-15 11:00:00 | Price: 72419.71 | TRENDING
 [2024-03-15 11:00:00]   mn= 4 -> ✗ FAIL
@@ -14446,7 +14437,6 @@ Dynamic mn range: 4 to 20
 [2024-03-31 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 60.383, Window: 0.338, Weight: 1.000, MaxWeight: 1.000, Final: 0.338
 [2024-03-31 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-03-31 11:00:00] Combined Score - High: 0.338*0.5=0.169, Low: 0.586*0.5=0.293, Combined: 0.462
-[2024-03-31 11:00:00] PnL Scale - Score: 0.462, Scale: 1.923
 [2024-03-31 11:00:00] Entry Size - Base: 28, Scale: 1.923, Final: 53
 [2024-04-01 11:00:00] [DYNAMIC-HIGH] Bar 833 | 2024-04-01 11:00:00 | Price: 71288.23 | TRENDING
 [2024-04-01 11:00:00]   mn= 4 -> ✗ FAIL
@@ -14847,7 +14837,6 @@ Dynamic mn range: 4 to 20
 [2024-04-17 10:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-04-17 10:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-04-17 10:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2024-04-17 10:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2024-04-17 10:00:00] Entry Size - Base: 32, Scale: 2.171, Final: 69
 [2024-04-18 10:00:00] [DYNAMIC-HIGH] Bar 850 | 2024-04-18 10:00:00 | Price: 64117.09 | NORMAL
 [2024-04-18 10:00:00]   mn= 4 -> ✗ FAIL
@@ -15242,7 +15231,6 @@ Dynamic mn range: 4 to 20
 [2024-05-03 10:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-05-03 10:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-05-03 10:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2024-05-03 10:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2024-05-03 10:00:00] Entry Size - Base: 31, Scale: 2.171, Final: 67
 [2024-05-04 10:00:00] [DYNAMIC-HIGH] Bar 866 | 2024-05-04 10:00:00 | Price: 64540.00 | NORMAL
 [2024-05-04 10:00:00]   mn= 4 -> ✗ FAIL
@@ -16411,7 +16399,6 @@ Dynamic mn range: 4 to 20
 [2024-06-24 10:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-06-24 10:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 18, m^k+n^k: 54.000, Window: 0.302, Weight: 1.000, MaxWeight: 1.000, Final: 0.302
 [2024-06-24 10:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.302*0.5=0.151, Combined: 0.444
-[2024-06-24 10:00:00] PnL Scale - Score: 0.444, Scale: 1.888
 [2024-06-24 10:00:00] Entry Size - Base: 33, Scale: 1.888, Final: 62
 [2024-06-25 10:00:00] [DYNAMIC-HIGH] Bar 918 | 2024-06-25 10:00:00 | Price: 62420.00 | NORMAL
 [2024-06-25 10:00:00]   mn= 4 -> ✗ FAIL
@@ -16544,7 +16531,6 @@ Dynamic mn range: 4 to 20
 [2024-06-30 10:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-06-30 10:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-06-30 10:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2024-06-30 10:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2024-06-30 10:00:00] Entry Size - Base: 31, Scale: 2.171, Final: 67
 [2024-07-01 10:00:00] [DYNAMIC-HIGH] Bar 924 | 2024-07-01 10:00:00 | Price: 63861.76 | NORMAL
 [2024-07-01 10:00:00]   mn= 4 -> ✓ PASS
@@ -16717,7 +16703,6 @@ Dynamic mn range: 4 to 20
 [2024-07-05 10:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-07-05 10:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 40, m^k+n^k: 178.885, Window: 1.000, Weight: 1.000, MaxWeight: 1.000, Final: 1.000
 [2024-07-05 10:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 1.000*0.5=0.500, Combined: 0.793
-[2024-07-05 10:00:00] PnL Scale - Score: 0.793, Scale: 2.586
 [2024-07-05 10:00:00] Entry Size - Base: 35, Scale: 2.586, Final: 90
 [2024-07-06 10:00:00] [DYNAMIC-HIGH] Bar 929 | 2024-07-06 10:00:00 | Price: 58475.00 | NORMAL
 [2024-07-06 10:00:00]   mn= 4 -> ✗ FAIL
@@ -16790,7 +16775,6 @@ Dynamic mn range: 4 to 20
 [2024-07-08 10:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-07-08 10:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-07-08 10:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2024-07-08 10:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2024-07-08 10:00:00] Entry Size - Base: 35, Scale: 2.171, Final: 75
 [2024-07-09 10:00:00] [DYNAMIC-HIGH] Bar 932 | 2024-07-09 10:00:00 | Price: 58296.00 | NORMAL
 [2024-07-09 10:00:00]   mn= 4 -> ✗ FAIL
@@ -17457,7 +17441,6 @@ Dynamic mn range: 4 to 20
 [2024-08-05 10:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-08-05 10:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 40, m^k+n^k: 178.885, Window: 1.000, Weight: 1.000, MaxWeight: 1.000, Final: 1.000
 [2024-08-05 10:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 1.000*0.5=0.500, Combined: 0.793
-[2024-08-05 10:00:00] PnL Scale - Score: 0.793, Scale: 2.586
 [2024-08-05 10:00:00] Entry Size - Base: 37, Scale: 2.586, Final: 95
 [2024-08-06 10:00:00] [DYNAMIC-HIGH] Bar 960 | 2024-08-06 10:00:00 | Price: 57040.99 | NORMAL
 [2024-08-06 10:00:00]   mn= 4 -> ✗ FAIL
@@ -18118,7 +18101,6 @@ Dynamic mn range: 4 to 20
 [2024-09-04 10:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-09-04 10:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-09-04 10:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2024-09-04 10:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2024-09-04 10:00:00] Entry Size - Base: 34, Scale: 2.171, Final: 73
 [2024-09-05 10:00:00] [DYNAMIC-HIGH] Bar 990 | 2024-09-05 10:00:00 | Price: 58327.07 | NORMAL
 [2024-09-05 10:00:00]   mn= 4 -> ✗ FAIL
@@ -18225,7 +18207,6 @@ Dynamic mn range: 4 to 20
 [2024-09-07 10:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-09-07 10:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-09-07 10:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2024-09-07 10:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2024-09-07 10:00:00] Entry Size - Base: 36, Scale: 2.171, Final: 78
 [2024-09-08 10:00:00] [DYNAMIC-HIGH] Bar 993 | 2024-09-08 10:00:00 | Price: 55318.00 | NORMAL
 [2024-09-08 10:00:00]   mn= 4 -> ✗ FAIL
@@ -18278,7 +18259,6 @@ Dynamic mn range: 4 to 20
 [2024-09-09 10:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-09-09 10:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-09-09 10:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2024-09-09 10:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2024-09-09 10:00:00] Entry Size - Base: 35, Scale: 2.171, Final: 75
 [2024-09-10 10:00:00] [DYNAMIC-HIGH] Bar 995 | 2024-09-10 10:00:00 | Price: 58044.36 | NORMAL
 [2024-09-10 10:00:00]   mn= 4 -> ✗ FAIL
@@ -19287,7 +19267,6 @@ Dynamic mn range: 4 to 20
 [2024-10-24 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 60.383, Window: 0.338, Weight: 1.000, MaxWeight: 1.000, Final: 0.338
 [2024-10-24 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-10-24 11:00:00] Combined Score - High: 0.338*0.5=0.169, Low: 0.586*0.5=0.293, Combined: 0.462
-[2024-10-24 11:00:00] PnL Scale - Score: 0.462, Scale: 1.923
 [2024-10-24 11:00:00] Entry Size - Base: 29, Scale: 1.923, Final: 55
 [2024-10-25 11:00:00] [DYNAMIC-HIGH] Bar 1040 | 2024-10-25 11:00:00 | Price: 68771.49 | TRENDING
 [2024-10-25 11:00:00]   mn= 4 -> ✗ FAIL
@@ -19360,7 +19339,6 @@ Dynamic mn range: 4 to 20
 [2024-10-27 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 60.383, Window: 0.338, Weight: 1.000, MaxWeight: 1.000, Final: 0.338
 [2024-10-27 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-10-27 11:00:00] Combined Score - High: 0.338*0.5=0.169, Low: 0.586*0.5=0.293, Combined: 0.462
-[2024-10-27 11:00:00] PnL Scale - Score: 0.462, Scale: 1.923
 [2024-10-27 11:00:00] Entry Size - Base: 29, Scale: 1.923, Final: 55
 [2024-10-28 11:00:00] [DYNAMIC-HIGH] Bar 1043 | 2024-10-28 11:00:00 | Price: 70270.00 | TRENDING
 [2024-10-28 11:00:00]   mn= 4 -> ✗ FAIL
@@ -19575,7 +19553,6 @@ Dynamic mn range: 4 to 20
 [2024-11-05 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 60.383, Window: 0.338, Weight: 1.000, MaxWeight: 1.000, Final: 0.338
 [2024-11-05 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-11-05 11:00:00] Combined Score - High: 0.338*0.5=0.169, Low: 0.586*0.5=0.293, Combined: 0.462
-[2024-11-05 11:00:00] PnL Scale - Score: 0.462, Scale: 1.923
 [2024-11-05 11:00:00] Entry Size - Base: 28, Scale: 1.923, Final: 53
 [2024-11-06 11:00:00] [DYNAMIC-HIGH] Bar 1052 | 2024-11-06 11:00:00 | Price: 76400.00 | TRENDING
 [2024-11-06 11:00:00]   mn= 4 -> ✗ FAIL
@@ -20062,7 +20039,6 @@ Dynamic mn range: 4 to 20
 [2024-11-27 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 60.383, Window: 0.338, Weight: 1.000, MaxWeight: 1.000, Final: 0.338
 [2024-11-27 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-11-27 11:00:00] Combined Score - High: 0.338*0.5=0.169, Low: 0.586*0.5=0.293, Combined: 0.462
-[2024-11-27 11:00:00] PnL Scale - Score: 0.462, Scale: 1.923
 [2024-11-27 11:00:00] Entry Size - Base: 20, Scale: 1.923, Final: 38
 [2024-11-28 11:00:00] [DYNAMIC-HIGH] Bar 1074 | 2024-11-28 11:00:00 | Price: 96564.00 | TRENDING
 [2024-11-28 11:00:00]   mn= 4 -> ✗ FAIL
@@ -20293,7 +20269,6 @@ Dynamic mn range: 4 to 20
 [2024-12-05 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 54.000, Window: 0.302, Weight: 1.000, MaxWeight: 1.000, Final: 0.302
 [2024-12-05 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 30, m^k+n^k: 116.190, Window: 0.650, Weight: 1.000, MaxWeight: 1.000, Final: 0.650
 [2024-12-05 11:00:00] Combined Score - High: 0.302*0.5=0.151, Low: 0.650*0.5=0.325, Combined: 0.476
-[2024-12-05 11:00:00] PnL Scale - Score: 0.476, Scale: 1.951
 [2024-12-05 11:00:00] Entry Size - Base: 20, Scale: 1.951, Final: 39
 [2024-12-06 11:00:00] [DYNAMIC-HIGH] Bar 1082 | 2024-12-06 11:00:00 | Price: 101898.99 | TRENDING
 [2024-12-06 11:00:00]   mn= 4 -> ✗ FAIL
@@ -20660,7 +20635,6 @@ Dynamic mn range: 4 to 20
 [2024-12-20 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 60.383, Window: 0.338, Weight: 1.000, MaxWeight: 1.000, Final: 0.338
 [2024-12-20 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 54.000, Window: 0.302, Weight: 1.000, MaxWeight: 1.000, Final: 0.302
 [2024-12-20 11:00:00] Combined Score - High: 0.338*0.5=0.169, Low: 0.302*0.5=0.151, Combined: 0.320
-[2024-12-20 11:00:00] PnL Scale - Score: 0.320, Scale: 1.639
 [2024-12-20 11:00:00] Entry Size - Base: 20, Scale: 1.639, Final: 32
 [2024-12-21 11:00:00] [DYNAMIC-HIGH] Bar 1097 | 2024-12-21 11:00:00 | Price: 99540.61 | TRENDING
 [2024-12-21 11:00:00]   mn= 4 -> ✗ FAIL
@@ -20733,7 +20707,6 @@ Dynamic mn range: 4 to 20
 [2024-12-23 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 60.383, Window: 0.338, Weight: 1.000, MaxWeight: 1.000, Final: 0.338
 [2024-12-23 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2024-12-23 11:00:00] Combined Score - High: 0.338*0.5=0.169, Low: 0.586*0.5=0.293, Combined: 0.462
-[2024-12-23 11:00:00] PnL Scale - Score: 0.462, Scale: 1.923
 [2024-12-23 11:00:00] Entry Size - Base: 21, Scale: 1.923, Final: 40
 [2024-12-24 11:00:00] [DYNAMIC-HIGH] Bar 1100 | 2024-12-24 11:00:00 | Price: 99487.99 | TRENDING
 [2024-12-24 11:00:00]   mn= 4 -> ✗ FAIL
@@ -20948,7 +20921,6 @@ Dynamic mn range: 4 to 20
 [2025-01-01 11:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2025-01-01 11:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2025-01-01 11:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2025-01-01 11:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2025-01-01 11:00:00] Entry Size - Base: 21, Scale: 2.171, Final: 45
 [2025-01-02 11:00:00] [DYNAMIC-HIGH] Bar 1109 | 2025-01-02 11:00:00 | Price: 97839.50 | NORMAL
 [2025-01-02 11:00:00]   mn= 4 -> ✗ FAIL
@@ -21061,7 +21033,6 @@ Dynamic mn range: 4 to 20
 [2025-01-06 11:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2025-01-06 11:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2025-01-06 11:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2025-01-06 11:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2025-01-06 11:00:00] Entry Size - Base: 19, Scale: 2.171, Final: 41
 [2025-01-07 11:00:00] [DYNAMIC-HIGH] Bar 1114 | 2025-01-07 11:00:00 | Price: 102724.38 | NORMAL
 [2025-01-07 11:00:00]   mn= 4 -> ✓ PASS
@@ -21128,7 +21099,6 @@ Dynamic mn range: 4 to 20
 [2025-01-08 11:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2025-01-08 11:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2025-01-08 11:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 0.586*0.5=0.293, Combined: 0.586
-[2025-01-08 11:00:00] PnL Scale - Score: 0.586, Scale: 2.171
 [2025-01-08 11:00:00] Entry Size - Base: 21, Scale: 2.171, Final: 45
 [2025-01-09 11:00:00] [DYNAMIC-HIGH] Bar 1116 | 2025-01-09 11:00:00 | Price: 95382.32 | NORMAL
 [2025-01-09 11:00:00]   mn= 4 -> ✗ FAIL
@@ -21291,7 +21261,6 @@ Dynamic mn range: 4 to 20
 [2025-01-13 11:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2025-01-13 11:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 40, m^k+n^k: 178.885, Window: 1.000, Weight: 1.000, MaxWeight: 1.000, Final: 1.000
 [2025-01-13 11:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 1.000*0.5=0.500, Combined: 0.793
-[2025-01-13 11:00:00] PnL Scale - Score: 0.793, Scale: 2.586
 [2025-01-13 11:00:00] Entry Size - Base: 21, Scale: 2.586, Final: 54
 [2025-01-14 11:00:00] [DYNAMIC-HIGH] Bar 1121 | 2025-01-14 11:00:00 | Price: 97371.00 | NORMAL
 [2025-01-14 11:00:00]   mn= 4 -> ✗ FAIL
@@ -21626,7 +21595,6 @@ Dynamic mn range: 4 to 20
 [2025-01-27 11:00:00] HL Score - Type: high, Trending: 1.0, k: 1.50, m+n: 18, m^k+n^k: 60.383, Window: 0.338, Weight: 1.000, MaxWeight: 1.000, Final: 0.338
 [2025-01-27 11:00:00] HL Score - Type: low, Trending: 1.0, k: 1.50, m+n: 10, m^k+n^k: 22.361, Window: 0.125, Weight: 1.000, MaxWeight: 1.000, Final: 0.125
 [2025-01-27 11:00:00] Combined Score - High: 0.338*0.5=0.169, Low: 0.125*0.5=0.062, Combined: 0.231
-[2025-01-27 11:00:00] PnL Scale - Score: 0.231, Scale: 1.463
 [2025-01-27 11:00:00] Entry Size - Base: 19, Scale: 1.463, Final: 27
 [2025-01-28 11:00:00] [DYNAMIC-HIGH] Bar 1135 | 2025-01-28 11:00:00 | Price: 103800.00 | TRENDING
 [2025-01-28 11:00:00]   mn= 4 -> ✗ FAIL
@@ -23267,7 +23235,6 @@ Dynamic mn range: 4 to 20
 [2025-04-07 10:00:00] HL Score - Type: high, Trending: 0.0, k: 1.50, m+n: 28, m^k+n^k: 104.766, Window: 0.586, Weight: 1.000, MaxWeight: 1.000, Final: 0.586
 [2025-04-07 10:00:00] HL Score - Type: low, Trending: 0.0, k: 1.50, m+n: 40, m^k+n^k: 178.885, Window: 1.000, Weight: 1.000, MaxWeight: 1.000, Final: 1.000
 [2025-04-07 10:00:00] Combined Score - High: 0.586*0.5=0.293, Low: 1.000*0.5=0.500, Combined: 0.793
-[2025-04-07 10:00:00] PnL Scale - Score: 0.793, Scale: 2.586
 [2025-04-07 10:00:00] Entry Size - Base: 25, Scale: 2.586, Final: 64
 [2025-04-08 10:00:00] [DYNAMIC-HIGH] Bar 1205 | 2025-04-08 10:00:00 | Price: 80867.99 | NORMAL
 [2025-04-08 10:00:00]   mn= 4 -> ✗ FAIL

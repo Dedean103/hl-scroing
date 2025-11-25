@@ -201,31 +201,6 @@ class VipHLStrategy(bt.Strategy):
         scale = 1.0 + 2.0 * combined_score
         return max(1.0, min(scale, 3.0))
 
-    def calculate_pnl_scale(self, combined_score):
-        '''
-        Maps combined_score (0-1) to PnL scale (1-3)
-
-        Current: Linear relationship
-        Formula: scale = 1 + 2 * score
-
-        Characteristics:
-        - Linear/proportional relationship between score and scale
-        - Constant growth rate across all score ranges
-        - Balanced reward structure
-
-        Examples:
-        - score=0.0 → scale=1.00 (minimum)
-        - score=0.5 → scale=2.00 (midpoint)
-        - score=1.0 → scale=3.00 (maximum)
-        '''
-        scale = self.calculate_position_scale(combined_score)
-
-        # Debug logging
-        if (self.p.debug_mode or self.p.save_debug_to_file) and hasattr(self, 'data') and len(self.data) > 0:
-            self.debug_log(f"PnL Scale - Score: {combined_score:.3f}, Scale: {scale:.3f}")
-
-        return scale
-
     def validate_pivot_with_mn(self, bar_index, m, n, pivot_type):
         """Validate if a bar is a pivot with the supplied m/n window."""
         # Check bounds - need n bars on left and m bars on right
@@ -458,7 +433,6 @@ class VipHLStrategy(bt.Strategy):
 
         # For tracking trades
         self.trade_list = []
-        self.trade_scales = {}  # Maps trade id to PnL scale (1-3)
         self.result = {}
 
         # For pretty graph
@@ -644,16 +618,8 @@ class VipHLStrategy(bt.Strategy):
                         f"Combined: {combined_score:.3f}")
             self.debug_log(debug_msg)
 
-        # Calculate PnL scale from combined score
-        # Only apply scaling if scoring-scale system is enabled, otherwise use neutral scale of 1.0
-        if self.p.enable_scoring_scale:
-            pnl_scale = self.calculate_pnl_scale(combined_score)
-            size_scale = pnl_scale
-        else:
-            pnl_scale = 1.0
-            size_scale = 1.0
-
         # Calculate entry size using bounded scaling (1x - 3x)
+        size_scale = self.calculate_position_scale(combined_score) if self.p.enable_scoring_scale else 1.0
         base_entry_size = max(1, math.floor(self.p.order_size_in_usd / self.data.close[0]))
         entry_size = max(1, math.floor(base_entry_size * size_scale))
 
@@ -674,8 +640,6 @@ class VipHLStrategy(bt.Strategy):
             )
         )
 
-        # Store the PnL scale for this trade
-        self.trade_scales[id(self.trade_list[-1])] = pnl_scale
 
     def manage_trade(self):
         self.cur_drawdown = 0.0
@@ -735,10 +699,9 @@ class VipHLStrategy(bt.Strategy):
                         trade.first_return = cur_return
                         self.current_equity += (1 + cur_return / 100) * cur_entry_price * int(trade.total_entry_size * 0.33)
                         self.max_equity = max(self.max_equity, self.current_equity)
-                        # Apply PnL scale to partial exit
-                        scale = self.trade_scales.get(id(trade), 1.0)
-                        self.total_pnl += cur_return / 3 * scale
-                        trade.pnl += cur_return / 3 * scale
+                        # Record partial exit PnL based on actual sized position
+                        self.total_pnl += cur_return / 3
+                        trade.pnl += cur_return / 3
                     trade.take_profit = True # take ptofit meaning second time?
                     trade.open_entry_size -= int(trade.total_entry_size * 0.33)
 
@@ -758,20 +721,16 @@ class VipHLStrategy(bt.Strategy):
         trade.first_return = cur_return
         self.current_equity += (1 + cur_return / 100) * cur_entry_price * trade.open_entry_size
         self.max_equity = max(self.max_equity, self.current_equity)
-        # Apply PnL scale
-        scale = self.trade_scales.get(id(trade), 1.0)
-        self.total_pnl += cur_return * scale
-        trade.pnl += cur_return * scale
+        self.total_pnl += cur_return
+        trade.pnl += cur_return
 
     # why second time?
     def exit_second_time(self, cur_entry_price, cur_return, trade):
         trade.second_return = cur_return
         self.current_equity += (1 + cur_return / 100) * cur_entry_price * trade.open_entry_size
         self.max_equity = max(self.max_equity, self.current_equity)
-        # Apply PnL scale
-        scale = self.trade_scales.get(id(trade), 1.0)
-        self.total_pnl += cur_return * 2 / 3 * scale
-        trade.pnl += cur_return * 2 / 3 * scale
+        self.total_pnl += cur_return * 2 / 3
+        trade.pnl += cur_return * 2 / 3
 
     def stop(self):
         self.export_hl_for_plotting()
@@ -829,9 +788,6 @@ class VipHLStrategy(bt.Strategy):
         avg_losing_pnl = round(loss_pnl / loss_count, 2) if loss_count > 0 else 0
         fit_score = round(FIT_SCORE_MAX if loss_pnl == 0.0 else min((-win_pnl / loss_pnl), FIT_SCORE_MAX), 2)
 
-        # Get PnL scale (same for all trades in a run since it's based on fixed m,n,k parameters)
-        scale = round(list(self.trade_scales.values())[0], 3) if len(self.trade_scales) > 0 else 0
-
         self.result = {
             "Total Pnl%": total_pnl,
             "Avg Pnl% per entry": avg_pnl_per_entry,
@@ -839,8 +795,7 @@ class VipHLStrategy(bt.Strategy):
             "Winning entry%": winning_entry_rate,
             "Avg Winner%": avg_winning_pnl,
             "Avg Loser%": avg_losing_pnl,
-            "Fit Score": fit_score,
-            "Scale": scale
+            "Fit Score": fit_score
         }
         self.trade_detail_list = trade_detail_list
 
