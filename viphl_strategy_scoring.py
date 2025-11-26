@@ -306,6 +306,21 @@ class VipHLStrategy(bt.Strategy):
         
         return (best_m, best_n, pivot_found)
 
+    def get_trade_mn_values(self, recovery_window_result):
+        """Get mn values specific to the HL that triggered this trade"""
+        if recovery_window_result.recovery_succeeded():
+            recovery_window = recovery_window_result.success.recovery_window
+            
+            # Use the mn from the HL that created this recovery window
+            hl_mn = recovery_window.hl_weighted_mn
+            
+            # For now, use the same mn for both high and low
+            # This could be enhanced later to track high/low specific mn values
+            return hl_mn, hl_mn
+        else:
+            # Fallback to current logic if no recovery window
+            return self.get_current_mn_values()
+
     def get_current_mn_values(self):
         """
         Get the current m,n values to use for scoring.
@@ -590,10 +605,22 @@ class VipHLStrategy(bt.Strategy):
         return new_trade
 
     def record_trade(self, extend_bar_signal_offset):
-        # Get current mn values (dynamic or static)
-        (high_m, high_n), (low_m, low_n) = self.get_current_mn_values()
+        # Get the latest recovery window result to extract HL-specific mn values
+        recovery_window_result = self.viphl.check_recovery_window_v3(
+            close_avg_percent=self.close_average_percent[0],
+            close_above_hl_threshold=self.params.close_above_hl_threshold,
+            trap_recover_window_threshold=self.params.trap_recover_window_threshold,
+            signal_window=self.params.signal_window,
+            close_above_low_threshold=self.params.close_above_low_threshold,
+            close_above_recover_low_threshold=self.params.close_above_recover_low_threshold,
+            bar_count_close_above_hl_threshold=self.params.close_above_hl_bar_count,
+            vvip_hl_min_by_point_count=self.params.vviphl_min_bypoint_count
+        )
 
-        # Calculate HL byP scores using the determined m,n values
+        # Use HL-specific mn values instead of current detection
+        (high_m, high_n), (low_m, low_n) = self.get_trade_mn_values(recovery_window_result)
+
+        # Calculate HL byP scores using the HL-specific m,n values
         high_score = self.calculate_hl_byp_score(
             high_m, high_n,
             pivot_type='high',
@@ -613,7 +640,8 @@ class VipHLStrategy(bt.Strategy):
 
         # Debug logging for weighted scoring
         if (self.p.debug_mode or self.p.save_debug_to_file) and hasattr(self, 'data') and len(self.data) > 0:
-            debug_msg = (f"Combined Score - High: {high_score:.3f}*{self.p.high_score_scaling_factor:.1f}={weighted_high:.3f}, "
+            debug_msg = (f"HL-Trade Scaling - mn_high: ({high_m:.1f},{high_n:.1f}), mn_low: ({low_m:.1f},{low_n:.1f}), "
+                        f"High: {high_score:.3f}*{self.p.high_score_scaling_factor:.1f}={weighted_high:.3f}, "
                         f"Low: {low_score:.3f}*{self.p.low_score_scaling_factor:.1f}={weighted_low:.3f}, "
                         f"Combined: {combined_score:.3f}")
             self.debug_log(debug_msg)
@@ -636,7 +664,11 @@ class VipHLStrategy(bt.Strategy):
                 total_entry_size=entry_size,
                 is_long=True,
                 is_open=True,
-                max_exit_price=self.data.high[0]
+                max_exit_price=self.data.high[0],
+                # NEW: Store the HL-specific mn values for trade lifecycle consistency
+                trade_mn_high=(high_m, high_n),
+                trade_mn_low=(low_m, low_n),
+                original_combined_score=combined_score
             )
         )
 

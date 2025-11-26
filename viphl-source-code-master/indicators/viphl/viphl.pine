@@ -1,0 +1,1356 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Perrybiz
+
+//@version=5
+
+// @description TODO: add library description here
+library("VIPHL", overlay = true)
+import PineCoders/Time/4
+import Perrybiz/CloseAveragePercent/1 as CloseAveragePercent
+import Perrybiz/Debug/1
+
+//#region ———————————————————— Library types and functions
+barCountToTime(int barCount) =>
+    barCount * (time - time[1])
+
+export type RecoveryWindow
+    float breakHLAtPrice
+    int   breakHLAtBarIndex
+    int   recoverAtBarIndex
+    int   breakHLExtendBarCross
+    int   barCountCloseAboveHL // this is to keep track of how many bars are close above HL within the past x search range
+    int   vipByPointCount
+    bool  recovered = false // added for checkRecoveryWindowV3, set this to true when either a failure or success signal is produced
+
+export type RecoveryWindowResult
+    bool hasSignal = false    // only set to true if closeAboveLowAndHL and no violation
+    bool isVvipSignal = false // only set to true if number of vip by points meets the requirement
+    bool closeAboveLowAndHL = false 
+    bool violateExtendBarCross = false
+    bool violateRecoverWindow = false // when recover window = 1 it means it close above hl at current bar
+    bool violateSignalWindow = false
+    bool violateSearchRangeCloseAboveBarCount = false
+    RecoveryWindow recoveryWindow
+    line signalDebugLine = na
+
+export type RecoveryWindowFailure
+    bool closeAboveLowAndHL = false 
+    bool violateExtendBarCross = false
+    bool violateRecoverWindow = false // when recover window = 1 it means it close above hl at current bar
+    bool violateSignalWindow = false
+    bool violateSearchRangeCloseAboveBarCount = false
+    RecoveryWindow recoveryWindow = na
+
+export type RecoveryWindowSuccess
+    bool hasSignal = false    // only set to true if closeAboveLowAndHL and no violation
+    bool isVvipSignal = false // only set to true if number of vip by points meets the requirement
+    line signalDebugLine = na
+    RecoveryWindow recoveryWindow = na
+
+export method getSuccessByVvip(array<RecoveryWindowSuccess> successes, bool showHLBreak, color recoverHLColor, int recoverHLWidth) =>
+    int size = successes.size()
+    RecoveryWindowSuccess result = na
+    for x = 0 to (size > 0 ? size - 1 : na)
+        RecoveryWindowSuccess success = successes.get(x)
+        if x == 0
+            result := success
+
+        if success.isVvipSignal
+            result := success
+            break
+
+    if not na(result) and showHLBreak
+        line signalDebugLine = line.new(
+                                 bar_index, 
+                                 result.recoveryWindow.breakHLAtPrice, 
+                                 bar_index + 1, 
+                                 result.recoveryWindow.breakHLAtPrice, 
+                                 xloc.bar_index, 
+                                 color = recoverHLColor, 
+                                 width = recoverHLWidth,
+                                 style = line.style_dotted
+                             )
+        if not na(result.signalDebugLine)
+            result.signalDebugLine.delete()
+
+        result.signalDebugLine := signalDebugLine
+
+    result
+
+export type RecoveryWindowResultV2
+    RecoveryWindowFailure failure = na
+    RecoveryWindowSuccess success = na
+
+export method recoverySucceeded(RecoveryWindowResultV2 result) =>
+    not na(result.success)
+
+export method recoveryFailed(RecoveryWindowResultV2 result) =>
+    not na(result.failure)
+
+export method recoveryHasResult(RecoveryWindowResultV2 result) =>
+    result.recoveryFailed() or result.recoverySucceeded()
+
+export method noSignalButCloseAbove(RecoveryWindowResultV2 result) =>
+    if result.recoveryFailed()
+        result.failure.closeAboveLowAndHL
+    else
+        false
+
+export method isHLSatisfied(RecoveryWindowResultV2 result) =>
+    if result.recoverySucceeded()
+        result.success.hasSignal
+    else
+        false
+
+export method isVvipSignal(RecoveryWindowResultV2 result) =>
+    if result.isHLSatisfied()
+        result.success.isVvipSignal
+    else
+        false
+
+export method isNonVvipSignal(RecoveryWindowResultV2 result) =>
+    if result.isHLSatisfied()
+        not result.success.isVvipSignal
+    else
+        false
+
+// @type                                Provides calculation and display properties to `VipHL` objects. 
+// @field var1                          Variable 1
+// Below settings should only be relevant to the drawing
+// Any signal generation related parameters should be passed in
+// as part of the function call
+export type Settings
+    int  highByPointN = 30
+    int  highByPointM = 10
+    int  lowByPointN = 10
+    int  lowByPointM = 8
+
+    int  highByPointNOnTrend = 10
+    int  highByPointMOnTrend = 5
+    int  lowByPointNOnTrend = 5
+    int  lowByPointMOnTrend = 5
+
+    int barCountToByPoint = 60
+    int barCrossThreshold = 2
+    int hlLengthThreshold = 800
+
+    float hlOverlapCAPercentMultiplier = 2
+
+    bool showVipByPoint = false
+    bool showClosestVipHL = false
+    bool showHLBreak = false
+    bool onlyBodyCross = true
+
+    int lastByPointWeight = 4
+    int secondLastByPointWeight = 2
+    int byPointWeight = 1
+
+    int hlExtendBarCrossThreshold
+
+    // drawing related
+    color vipHLColor = color.blue
+    color closestHLColor = color.blue
+    int closestHLWidth = 1
+    color recoverHLColor = color.blue
+    int recoverHLWidth = 1
+
+    bool drawFromRecent = false
+    bool allowReuseByPoint = false
+
+    bool debug = false
+    int debugStartTime = 0
+    int debugEndTime = 0
+    float debugStartPrice = 0
+    float debugEndPrice = 0
+
+export type ByPoint
+    int n
+    int m
+    float price
+    float closeAtPivot
+    int barIndexAtPivot //index of the actual pivot
+    int barTimeAtPivot
+    bool isHigh
+    bool isTrending
+    bool used = false
+    float closeAvgPercent
+
+    label plotting = na
+    line closestHLAbove = na
+    line closestHLBelow = na
+
+method draw(ByPoint byPoint) =>
+    int x = byPoint.barTimeAtPivot
+    float y = byPoint.price
+    byPoint.plotting := switch byPoint.isTrending
+        true =>
+            switch byPoint.isHigh
+                true => label.new(x, y, "", yloc = yloc.abovebar, xloc = xloc.bar_time, style = label.style_flag)
+                => label.new(x, y, "", yloc = yloc.belowbar, xloc = xloc.bar_time, style = label.style_flag)
+        =>
+            switch byPoint.isHigh
+                true => label.new(x, y, "", yloc = yloc.abovebar, xloc = xloc.bar_time, style = label.style_diamond)
+                => label.new(x, y, "", yloc = yloc.belowbar, xloc = xloc.bar_time, style = label.style_diamond)
+
+export type HL
+    line ln
+    line extendLn
+    int startBarIndex
+    int endBarIndex
+    int startTime
+    int endTime
+    float hlValue
+    float hlAccumValue
+    array<float> byPointValues
+    float closeAvgPercent
+    int barCrosses = 0
+    bool violated = false // use to indicate if a hl is violated by body crosses
+    bool extended = false // use to indicate if a hl is extended to the first body cross
+    int extendEndBarIndex = 0
+    int barCrossesPostExtend = 0
+    bool historicalExtendBarCrossesChecked = false // use to indicate if has checked extend body cross for all historical bar post extend
+    int postExtendEndBarIndex = 0
+
+method notEqual(HL source, HL target) =>
+    (source.startBarIndex != target.startBarIndex) and (source.endBarIndex != target.endBarIndex) and (source.startTime != target.startTime) and (source.endTime != target.endTime) and (source.hlValue) != (target.hlValue) and
+     (source.hlAccumValue) != (target.hlAccumValue)
+
+method calculateWeightedHLValue(array<float> byPointValues, int lastByPointWeight, int secondLastByPointWeight, int byPointWeight) =>
+    int byPointCount = byPointValues.size()
+    float norm = 0.0
+    float sum = 0.0
+    for x = 0 to (byPointCount > 0 ? byPointCount - 1 : na)
+        int weight = switch
+            x == byPointCount - 1 => lastByPointWeight
+            x == byPointCount - 2 => secondLastByPointWeight
+            => 1
+        norm := norm + weight
+        sum := sum + byPointValues.get(x) * weight
+    
+    sum / norm
+
+method updateHLValue(HL hl, int lastByPointWeight, int secondLastByPointWeight, int byPointWeight) =>
+    hl.hlValue := hl.byPointValues.calculateWeightedHLValue(lastByPointWeight, secondLastByPointWeight, byPointWeight)
+
+// existingHL.merge(newHLFromByPoint, vipHL.settings.lastByPointWeight, vipHL.settings.secondLastByPointWeight, vipHL.settings.byPointWeight, true)
+method merge(HL source, HL target, int lastByPointWeight, int secondLastByPointWeight, int byPointWeight, bool backward) =>
+    bool isNotEqual = source.notEqual(target)
+    if not backward
+        if isNotEqual
+            source.byPointValues.concat(target.byPointValues)
+
+            source.hlAccumValue += target.hlValue
+            source.updateHLValue(lastByPointWeight, secondLastByPointWeight, byPointWeight)
+            source.endBarIndex := target.endBarIndex
+            source.endTime := target.endTime
+
+            target.ln.delete()
+            target.extendLn.delete()
+
+            source.ln.set_x2(source.endTime)
+            source.ln.set_y1(source.hlValue)
+            source.ln.set_y2(source.hlValue)
+            source.extended := false // reset extension
+            source.extendLn.delete() // reset extension line
+            source.historicalExtendBarCrossesChecked := false
+            source.barCrossesPostExtend := 0 // reset bar cross post extend if not draw from recent
+            source.postExtendEndBarIndex := 0
+            source.extendEndBarIndex := 0
+        else
+            target.ln.delete() //simply delete target if equal
+            target.extendLn.delete()
+    else
+        if isNotEqual
+            source.byPointValues := target.byPointValues.concat(source.byPointValues)
+
+            source.hlAccumValue += target.hlValue
+            source.updateHLValue(lastByPointWeight, secondLastByPointWeight, byPointWeight)
+            source.startBarIndex := target.startBarIndex
+            source.startTime := target.startTime
+
+            target.ln.delete()
+            target.extendLn.delete()
+
+            source.ln.set_x1(source.startTime)
+            source.ln.set_y1(source.hlValue)
+            source.ln.set_y2(source.hlValue)
+            source.extended := false // reset extension
+            source.extendLn.delete() // reset extension line
+        else
+            target.ln.delete() //simply delete target if equal
+            target.extendLn.delete()
+
+    true
+
+method overlap(HL source, HL target, float threshold)=>
+    bool isOverlap = false
+
+    float higherBoundY = source.hlValue * (1 + threshold / 100)
+    float lowerBoundY = source.hlValue * (1 - threshold  / 100)
+
+    if (target.hlValue <= higherBoundY and target.hlValue >= lowerBoundY)
+        isOverlap := true
+
+    isOverlap
+
+method swap(HL[] hls, int xIndex, int yIndex)=>
+    HL tmp = array.get(hls, yIndex)
+    array.set(hls, yIndex, array.get(hls, xIndex))
+    array.set(hls, xIndex, tmp)
+
+method isHLBarCrossesViolatedIfMerged(
+     HL startHL, HL endHL, int barCrossThreshold, int lastByPointWeight, 
+     int secondLastByPointWeight, int byPointWeight, int currentCrossCount) =>
+
+    bool barCrossViolated = false
+        
+    int barCountToLoop = endHL.endBarIndex - startHL.endBarIndex
+    int offsetToStartHLEndBarIndex = bar_index - startHL.endBarIndex
+    array<float> startHLByPoints = startHL.byPointValues.copy()
+    array<float> endHLByPoints = endHL.byPointValues.copy()
+    float mergedHLValue = array.concat(startHLByPoints, endHLByPoints).calculateWeightedHLValue(lastByPointWeight, secondLastByPointWeight, byPointWeight)
+    int latestCrossCount = currentCrossCount
+
+    for x = 0 to (barCountToLoop > 0 ? barCountToLoop - 1 : na)
+        int currentLoopIndex = offsetToStartHLEndBarIndex - x
+        if math.min(close[currentLoopIndex], open[currentLoopIndex]) < mergedHLValue and math.max(close[currentLoopIndex], open[currentLoopIndex]) > mergedHLValue
+            latestCrossCount += 1
+
+    if latestCrossCount > barCrossThreshold
+        barCrossViolated := true
+
+    barCrossViolated
+
+method isHLLengthPassedIfMerged(HL startHL, HL endHL, int lengthLimit) =>
+    endHL.endBarIndex - startHL.startBarIndex <= lengthLimit
+
+// @type                                An object to maintain a VipHL's settings. 
+// @field settings                      A `Settings` object to provide calculation and display properties.
+// @field newVipHighByPoints            An array object to track all new high byPoints that are pending process
+// @field newVipLowByPoints            An array object to track all new low byPoints that are pending process
+export type VipHL
+    Settings     settings
+    array<HL>    hls
+    array<ByPoint> vipByPoints
+    array<ByPoint> newVipByPoints
+    array<RecoveryWindow> recoveryWindows
+    map<float, int> latestRecoveryWindows
+
+method addNewByPointsToPending(VipHL vipHL, bool isMaTrending, float closeAvgPercent) =>
+    float normalHighByPoint = ta.pivothigh(high, vipHL.settings.highByPointN, vipHL.settings.highByPointM)
+    float normalLowByPoint = ta.pivotlow(low, vipHL.settings.lowByPointN, vipHL.settings.lowByPointM)
+    float trendingHighByPoint = ta.pivothigh(high, vipHL.settings.highByPointNOnTrend, vipHL.settings.highByPointMOnTrend)
+    float trendingLowByPoint = ta.pivotlow(low, vipHL.settings.lowByPointNOnTrend, vipHL.settings.lowByPointMOnTrend)
+    bool newByPointFound = false
+    bool withinTimeRange = time >= vipHL.settings.debugStartTime and time <= vipHL.settings.debugEndTime
+    bool maybeOnlyDrawFromRecent = vipHL.settings.drawFromRecent ? last_bar_index - bar_index < vipHL.settings.barCountToByPoint : true
+
+    if not na(normalHighByPoint) and not isMaTrending[vipHL.settings.highByPointM]
+        bool withinPriceRange = normalHighByPoint > vipHL.settings.debugStartPrice and normalHighByPoint < vipHL.settings.debugEndPrice
+        if (not vipHL.settings.debug or (withinTimeRange and withinPriceRange)) and maybeOnlyDrawFromRecent
+            newByPointFound := true
+            vipHL.newVipByPoints.push(
+                 ByPoint.new(
+                     vipHL.settings.highByPointN, 
+                     vipHL.settings.highByPointM, 
+                     normalHighByPoint,
+                     close[vipHL.settings.highByPointM],
+                     bar_index - vipHL.settings.highByPointM,
+                     time("", vipHL.settings.highByPointM),
+                     true,
+                     false,
+                     false,
+                     closeAvgPercent
+                 )
+             )
+
+    if not na(normalLowByPoint) and not isMaTrending[vipHL.settings.lowByPointM]
+        bool withinPriceRange = normalLowByPoint > vipHL.settings.debugStartPrice and normalLowByPoint < vipHL.settings.debugEndPrice
+        if (not vipHL.settings.debug or (withinTimeRange and withinPriceRange)) and maybeOnlyDrawFromRecent
+            newByPointFound := true
+            vipHL.newVipByPoints.push(
+                 ByPoint.new(
+                     vipHL.settings.lowByPointN, 
+                     vipHL.settings.lowByPointM, 
+                     normalLowByPoint, 
+                     close[vipHL.settings.lowByPointM],
+                     bar_index - vipHL.settings.lowByPointM,
+                     time("", vipHL.settings.lowByPointM),
+                     false,
+                     false,
+                     false,
+                     closeAvgPercent
+                 )
+             )
+
+    if not na(trendingHighByPoint) and isMaTrending[vipHL.settings.highByPointMOnTrend]
+        bool withinPriceRange = trendingHighByPoint > vipHL.settings.debugStartPrice and trendingHighByPoint < vipHL.settings.debugEndPrice
+        if (not vipHL.settings.debug or (withinTimeRange and withinPriceRange)) and maybeOnlyDrawFromRecent
+            newByPointFound := true
+            vipHL.newVipByPoints.push(
+                 ByPoint.new(
+                     vipHL.settings.highByPointNOnTrend, 
+                     vipHL.settings.highByPointMOnTrend, 
+                     trendingHighByPoint, 
+                     close[vipHL.settings.highByPointMOnTrend],
+                     bar_index - vipHL.settings.highByPointMOnTrend,
+                     time("", vipHL.settings.highByPointMOnTrend),
+                     true,
+                     true,
+                     false,
+                     closeAvgPercent
+                 )
+             )
+
+    if not na(trendingLowByPoint) and isMaTrending[vipHL.settings.lowByPointMOnTrend]
+        bool withinPriceRange = trendingLowByPoint > vipHL.settings.debugStartPrice and trendingLowByPoint < vipHL.settings.debugEndPrice
+        if (not vipHL.settings.debug or (withinTimeRange and withinPriceRange)) and maybeOnlyDrawFromRecent
+            newByPointFound := true
+            vipHL.newVipByPoints.push(
+                 ByPoint.new(
+                     vipHL.settings.lowByPointNOnTrend, 
+                     vipHL.settings.lowByPointMOnTrend, 
+                     trendingLowByPoint, 
+                     close[vipHL.settings.lowByPointMOnTrend],
+                     bar_index - vipHL.settings.lowByPointMOnTrend,
+                     time("", vipHL.settings.lowByPointMOnTrend),
+                     false,
+                     true,
+                     false,
+                     closeAvgPercent
+                 )
+             )
+
+    newByPointFound
+
+
+method addNewByPointsToProcessedArrary(VipHL vipHL) =>
+    while vipHL.newVipByPoints.size() > 0
+        vipHL.vipByPoints.push(vipHL.newVipByPoints.pop())
+
+
+method sortHLsByEndBarIndex(VipHL vipHL) =>
+    int hlSize = array.size(vipHL.hls)
+    for x = 0 to (hlSize > 1 ? hlSize - 2 : na)
+        for y = x + 1 to (hlSize > 0 ? hlSize - 1 : na)
+            HL lineX = array.get(vipHL.hls, x)
+            HL lineY = array.get(vipHL.hls, y)
+            if lineY.endBarIndex < lineX.endBarIndex
+                vipHL.hls.swap(x, y)
+
+method removeHLByEndBarIndex(VipHL vipHL) => 
+    bool doShift = false
+    if vipHL.hls.size() > 0
+        if vipHL.hls.get(0).endBarIndex + vipHL.settings.barCountToByPoint < bar_index
+            doShift := true
+    while doShift
+        HL removed = vipHL.hls.shift()
+        removed.ln.delete()
+        removed.extendLn.delete()
+
+        if vipHL.hls.size() <= 0
+            doShift := false
+
+        if vipHL.hls.size() > 0
+            if vipHL.hls.get(0).endBarIndex + vipHL.settings.barCountToByPoint >= bar_index
+                doShift := false
+
+// extend hl to first cross if any
+method extendHLToFirstCross(VipHL vipHL) =>
+    int hlSize = array.size(vipHL.hls)
+    for x = 0 to (hlSize > 0 ? hlSize - 1 : na)
+        HL existingHL = vipHL.hls.get(x)
+        float ohlcMin = math.min(close, open, high, low)
+        float ohlcMax = math.max(close, open, high, low)
+        float bodyMin = math.min(close, open)
+        float bodyMax = math.max(close, open)
+        float barMin = vipHL.settings.onlyBodyCross ? bodyMin : ohlcMin
+        float barMax = vipHL.settings.onlyBodyCross ? bodyMax : ohlcMax
+        
+        // first cross post extend
+        if existingHL.extended and not existingHL.historicalExtendBarCrossesChecked and bar_index > existingHL.extendEndBarIndex
+            // if hl cross current bar
+            if ohlcMin < existingHL.hlValue and ohlcMax > existingHL.hlValue
+
+                // check if hl cross current bar is a valid cross
+                // a valid cross will increment barCrossesPostExtend
+                if barMin < existingHL.hlValue and barMax > existingHL.hlValue
+                    existingHL.barCrossesPostExtend += 1
+
+                // create line
+                existingHL.historicalExtendBarCrossesChecked := true
+                existingHL.postExtendEndBarIndex := bar_index
+                existingHL.extendLn := line.new(
+                     existingHL.extendEndBarIndex, 
+                     existingHL.hlValue, 
+                     bar_index, 
+                     existingHL.hlValue, 
+                     color = vipHL.settings.vipHLColor, 
+                     style = line.style_dashed
+                 )
+
+            continue
+
+        if existingHL.historicalExtendBarCrossesChecked
+            // if hl cross current bar
+            if ohlcMin < existingHL.hlValue and ohlcMax > existingHL.hlValue
+
+                // check if hl cross current bar is a valid cross
+                // a valid cross will increment barCrossesPostExtend
+                if barMin < existingHL.hlValue and barMax > existingHL.hlValue
+                    existingHL.barCrossesPostExtend += 1
+
+                // update line
+                if existingHL.barCrossesPostExtend <= vipHL.settings.hlExtendBarCrossThreshold
+                    existingHL.postExtendEndBarIndex := bar_index
+                    existingHL.extendLn.set_x2(bar_index)
+                else
+                    existingHL.violated := true
+
+            continue
+        
+        // cross definition(AND):
+        // 1. min of ohlc is below hl, max of ohlc is above hl
+        // 2. time != hl.endTime to avoid checking crosses if current bar is also a by point
+        // 3. hl line end time is older than the current time
+        // first extend should still check ohcl for crosses
+        // note that first extend does not count as a cross
+        if ohlcMin < existingHL.hlValue and ohlcMax > existingHL.hlValue and time != existingHL.endTime and existingHL.ln.get_x2() < time
+            existingHL.ln.set_x2(time)
+            existingHL.extended := true
+            existingHL.extendEndBarIndex := bar_index
+
+method sortAndFilterHLs(VipHL vipHL) => 
+    // // remove old hls
+    if barstate.islast
+        // sort HL based on end bar index
+        vipHL.sortHLsByEndBarIndex()
+        vipHL.removeHLByEndBarIndex()
+
+method findClosestHLAndDraw(ByPoint byPoint, HL[] hls, bool shouldDraw, color lineColor, int closestHLWidth) =>
+    float byPointClose = byPoint.closeAtPivot
+    float upperDiff = 999999999999
+    float upperValue = na
+    float lowerDiff = 999999999999
+    float lowerValue = na
+
+    int hlSize = array.size(hls)
+    for x = 0 to (hlSize > 0 ? hlSize - 1 : na)
+        HL curHL = hls.get(x)
+        float curHLValue = curHL.hlValue
+        bool notFutureHL = curHL.startBarIndex < byPoint.barIndexAtPivot
+        if curHLValue > byPointClose and math.abs(curHLValue - byPointClose) < upperDiff and notFutureHL
+            upperDiff := math.abs(curHLValue - byPointClose)
+            upperValue := curHLValue
+        
+        if curHLValue < byPointClose and math.abs(curHLValue - byPointClose) < lowerDiff and notFutureHL
+            lowerDiff := math.abs(curHLValue - byPointClose)
+            lowerValue := curHLValue
+
+    if shouldDraw
+        if not na(lowerValue)
+            line.new(byPoint.barIndexAtPivot - 2, lowerValue, byPoint.barIndexAtPivot, lowerValue, xloc.bar_index, color = lineColor, width = closestHLWidth)
+
+        if not na(upperValue)
+            line.new(byPoint.barIndexAtPivot - 2, upperValue, byPoint.barIndexAtPivot, upperValue, xloc.bar_index, color = lineColor, width = closestHLWidth)
+
+    true
+
+method updateHorizontalLines(VipHL vipHL, float closeAvgPercent) =>
+    while vipHL.newVipByPoints.size() > 0
+
+        ByPoint curNewByPoint = vipHL.newVipByPoints.pop()
+
+        curNewByPoint.findClosestHLAndDraw(vipHL.hls, vipHL.settings.showClosestVipHL, vipHL.settings.closestHLColor, vipHL.settings.closestHLWidth) //-> remove for library debugging
+        
+        // 1. for each of the new pivot points found
+        //    assume it is the start of a new HL
+        HL newHLFromByPoint = HL.new(
+                                 ln = line.new(curNewByPoint.barTimeAtPivot, curNewByPoint.price, curNewByPoint.barTimeAtPivot + barCountToTime(5), curNewByPoint.price, xloc.bar_time, color = vipHL.settings.vipHLColor),
+                                 extendLn = na,
+                                 startBarIndex = curNewByPoint.barIndexAtPivot,
+                                 endBarIndex = curNewByPoint.barIndexAtPivot,
+                                 startTime = curNewByPoint.barTimeAtPivot,
+                                 endTime = curNewByPoint.barTimeAtPivot,
+                                 hlValue = curNewByPoint.price,
+                                 hlAccumValue = curNewByPoint.price,
+                                 byPointValues = array.from(curNewByPoint.price),
+                                 closeAvgPercent = curNewByPoint.closeAvgPercent
+                              )
+        bool isNewHL = true
+
+        // 2. loop through all existing HL, and check if the 
+        //    new pivot points can be used to extend any existing HL.
+        //.   Extend existing HL if possible, otherwise, add to all HL array
+        int hlSize = array.size(vipHL.hls)
+        for x = 0 to (hlSize > 0 ? hlSize - 1 : na)
+            HL existingHL = vipHL.hls.get(x)
+
+            if existingHL.overlap(newHLFromByPoint, vipHL.settings.hlOverlapCAPercentMultiplier * closeAvgPercent)
+                bool noBarCrossViolationPostMerge = not existingHL.isHLBarCrossesViolatedIfMerged(
+                                                         newHLFromByPoint, 
+                                                         vipHL.settings.barCrossThreshold, 
+                                                         vipHL.settings.lastByPointWeight, 
+                                                         vipHL.settings.secondLastByPointWeight, 
+                                                         vipHL.settings.byPointWeight,
+                                                         existingHL.barCrosses
+                                                     )
+                if noBarCrossViolationPostMerge and existingHL.isHLLengthPassedIfMerged(newHLFromByPoint, vipHL.settings.hlLengthThreshold)
+                    existingHL.merge(newHLFromByPoint, vipHL.settings.lastByPointWeight, vipHL.settings.secondLastByPointWeight, vipHL.settings.byPointWeight, false)
+                    isNewHL := false
+                    break
+
+        if isNewHL
+            vipHL.hls.push(newHLFromByPoint)
+
+        // 3. move all new pivots to processed array
+        vipHL.vipByPoints.push(curNewByPoint)
+
+    vipHL.hls
+
+// method mergeExistingHLs(VipHL vipHL) =>
+//     int hlSize = vipHL.hls.size()
+//     for x = 0 to (hlSize > 0 ? hlSize - 1 : na)
+
+method clearAllHL(VipHL vipHL) =>
+    int hlSize = vipHL.hls.size()
+    for x = 0 to (hlSize > 0 ? hlSize - 1 : na)
+        vipHL.hls.get(x).ln.delete()
+        vipHL.hls.get(x).extendLn.delete()
+
+    vipHL.hls.clear()
+
+method rebuildHLFromMostRecentByPoint(VipHL vipHL) =>
+
+    // draw closest hl first
+    int newVipByPointSize = vipHL.newVipByPoints.size()
+    for x = 0 to (newVipByPointSize > 0 ? newVipByPointSize - 1 : na)
+        ByPoint curNewByPoint = vipHL.newVipByPoints.get(x)
+        curNewByPoint.findClosestHLAndDraw(vipHL.hls, vipHL.settings.showClosestVipHL, vipHL.settings.closestHLColor, vipHL.settings.closestHLWidth)
+
+    // clear all existing hls when new vip by point is found
+    if vipHL.newVipByPoints.size() > 0 
+        vipHL.clearAllHL()
+
+    // loop all by point from right most to left
+    vipHL.vipByPoints.concat(vipHL.newVipByPoints)
+    vipHL.newVipByPoints.clear()
+    int vipByPointSize = vipHL.vipByPoints.size()
+
+    array<ByPoint> reversed = vipHL.vipByPoints.copy()
+    reversed.reverse()
+
+    for x = 0 to (vipByPointSize > 0 ? vipByPointSize - 1 : na)
+
+        ByPoint curNewByPoint = reversed.get(x)
+
+        curNewByPoint.findClosestHLAndDraw(vipHL.hls, vipHL.settings.showClosestVipHL, vipHL.settings.closestHLColor, vipHL.settings.closestHLWidth)
+        
+        //    for each of the new pivot points found
+        //    set it to be the start of a new HL
+        HL newHLFromByPoint = HL.new(
+                                 ln = line.new(curNewByPoint.barTimeAtPivot, curNewByPoint.price, curNewByPoint.barTimeAtPivot + barCountToTime(5), curNewByPoint.price, xloc.bar_time, color = vipHL.settings.vipHLColor),
+                                 extendLn = na,
+                                 startBarIndex = curNewByPoint.barIndexAtPivot,
+                                 endBarIndex = curNewByPoint.barIndexAtPivot,
+                                 startTime = curNewByPoint.barTimeAtPivot,
+                                 endTime = curNewByPoint.barTimeAtPivot,
+                                 hlValue = curNewByPoint.price,
+                                 hlAccumValue = curNewByPoint.price,
+                                 byPointValues = array.from(curNewByPoint.price),
+                                 closeAvgPercent = curNewByPoint.closeAvgPercent
+                              )
+
+        bool isNewHL = true
+
+        // loop through all existing hls, and try to merge
+        int hlSize = array.size(vipHL.hls)
+        for y = 0 to (hlSize > 0 ? hlSize - 1 : na)
+            HL existingHL = vipHL.hls.get(y)
+
+            if existingHL.overlap(newHLFromByPoint, vipHL.settings.hlOverlapCAPercentMultiplier * existingHL.closeAvgPercent)
+                bool noBarCrossViolationPostMerge = not newHLFromByPoint.isHLBarCrossesViolatedIfMerged(
+                                                         existingHL, 
+                                                         vipHL.settings.barCrossThreshold, 
+                                                         vipHL.settings.lastByPointWeight, 
+                                                         vipHL.settings.secondLastByPointWeight, 
+                                                         vipHL.settings.byPointWeight,
+                                                         existingHL.barCrosses
+                                                     )
+                if noBarCrossViolationPostMerge and newHLFromByPoint.isHLLengthPassedIfMerged(existingHL, vipHL.settings.hlLengthThreshold)
+                    existingHL.merge(newHLFromByPoint, vipHL.settings.lastByPointWeight, vipHL.settings.secondLastByPointWeight, vipHL.settings.byPointWeight, true)
+                    isNewHL := false
+
+                    if not vipHL.settings.allowReuseByPoint
+                        break
+
+        // otherwise, add to vipHL.hls
+        if isNewHL
+            vipHL.hls.push(newHLFromByPoint)
+
+// extend hl to first cross if any
+method extendHLToFirstCrossFromHistory(VipHL vipHL) =>
+    int hlSize = array.size(vipHL.hls)
+    for x = 0 to (hlSize > 0 ? hlSize - 1 : na)
+        HL existingHL = vipHL.hls.get(x)
+        int barCountToLoop = bar_index - existingHL.endBarIndex
+        float ohlcMin = math.min(close, open, high, low)
+        float ohlcMax = math.max(close, open, high, low)
+        float bodyMin = math.min(close, open)
+        float bodyMax = math.max(close, open)
+        float barMin = vipHL.settings.onlyBodyCross ? bodyMin : ohlcMin
+        float barMax = vipHL.settings.onlyBodyCross ? bodyMax : ohlcMax
+
+        if existingHL.historicalExtendBarCrossesChecked
+            // if hl cross current bar
+            if ohlcMin < existingHL.hlValue and ohlcMax > existingHL.hlValue
+
+                // check if hl cross current bar is a valid cross
+                // a valid cross will increment barCrossesPostExtend
+                if barMin < existingHL.hlValue and barMax > existingHL.hlValue
+                    existingHL.barCrossesPostExtend += 1
+
+                if existingHL.barCrossesPostExtend <= vipHL.settings.hlExtendBarCrossThreshold
+                    existingHL.postExtendEndBarIndex := bar_index
+                    existingHL.extendLn.set_x2(bar_index)
+                else
+                    existingHL.violated := true
+            continue
+
+        // cross definition(AND):
+        // 1. min of ohlc is below hl, max of ohlc is above hl
+        // 2. time != hl.endTime to avoid checking crosses if current bar is also a by point
+        // 3. hl line end time is older than the current time
+        for y = (barCountToLoop - 1 > 0 ? barCountToLoop - 1 : 0) to 0
+            ohlcMin := math.min(close[y], open[y], high[y], low[y])
+            ohlcMax := math.max(close[y], open[y], high[y], low[y])
+            bodyMin := math.min(close[y], open[y])
+            bodyMax := math.max(close[y], open[y])
+            barMin := vipHL.settings.onlyBodyCross ? bodyMin : ohlcMin
+            barMax := vipHL.settings.onlyBodyCross ? bodyMax : ohlcMax
+
+            if not existingHL.extended
+                // first extend should still check ohcl for crosses
+                // note that first extend does not count as a cross
+                if ohlcMin < existingHL.hlValue and ohlcMax > existingHL.hlValue and existingHL.endTime < time[y]
+                    existingHL.ln.set_x2(time[y])
+                    existingHL.extendEndBarIndex := (bar_index - y)
+                    existingHL.extended := true
+                    continue
+            
+            // first cross post extend
+            if existingHL.extended and not existingHL.historicalExtendBarCrossesChecked and (bar_index - y) > existingHL.extendEndBarIndex
+                // if hl cross current bar
+                if ohlcMin < existingHL.hlValue and ohlcMax > existingHL.hlValue
+
+                    // check if hl cross current bar is a valid cross
+                    // a valid cross will increment barCrossesPostExtend
+                    if barMin < existingHL.hlValue and barMax > existingHL.hlValue
+                        existingHL.barCrossesPostExtend += 1
+
+                    // create new line
+                    existingHL.postExtendEndBarIndex := (bar_index - y)
+                    existingHL.historicalExtendBarCrossesChecked := true
+                    existingHL.extendLn := line.new(
+                         existingHL.extendEndBarIndex, 
+                         existingHL.hlValue, 
+                         (bar_index - y), 
+                         existingHL.hlValue, 
+                         color = vipHL.settings.vipHLColor, 
+                         style = line.style_dashed
+                     )
+
+                    continue
+
+            if existingHL.historicalExtendBarCrossesChecked
+                // if hl cross current bar
+                if ohlcMin < existingHL.hlValue and ohlcMax > existingHL.hlValue
+
+                    // check if hl cross current bar is a valid cross
+                    // a valid cross will increment barCrossesPostExtend
+                    if barMin < existingHL.hlValue and barMax > existingHL.hlValue
+                        existingHL.barCrossesPostExtend += 1
+
+                    // update line
+                    if existingHL.barCrossesPostExtend <= vipHL.settings.hlExtendBarCrossThreshold
+                        existingHL.postExtendEndBarIndex := (bar_index - y)
+                        existingHL.extendLn.set_x2((bar_index - y))
+                    else
+                        existingHL.violated := true
+
+    true
+
+// to be deprecated
+export method retestHL(
+     VipHL vipHL, float closeAvgPercent, float closeAboveHLThreshold, int barCountCloseAboveHLThreshold, int searchRange
+ ) =>
+    bool retest = false
+    int hlSize = vipHL.hls.size()
+    HL retestHL = na
+    for x = 0 to (hlSize > 0 ? hlSize - 1 : na)
+        HL curHL = vipHL.hls.get(x)
+        float hlValue = curHL.hlValue
+
+        if (math.min(low, low[1]) < hlValue) and close > hlValue * (1 + closeAvgPercent*0.01*closeAboveHLThreshold)
+            int barCountCloseAboveHL = 0
+            for y = searchRange to 1
+                if close[y] >= hlValue
+                    barCountCloseAboveHL += 1
+
+            if barCountCloseAboveHL >= barCountCloseAboveHLThreshold
+                retest := true
+                retestHL := curHL.copy()
+                break
+    
+    [retest, retestHL]
+
+nextLineFromCounter(int counter) =>
+    string result = ""
+    for x = 0 to counter
+        result += "\n"
+
+    result
+
+export method updateRecoveryWindow(
+     VipHL vipHL, int trapRecoverWindowThreshold, int searchRange,
+     float lowAboveHLThreshold, float closeAvgPercent
+ ) =>
+    // add new windows
+    int hlSize = vipHL.hls.size()
+    for x = 0 to (hlSize > 0 ? hlSize - 1 : na)
+        HL curHL = vipHL.hls.get(x)
+        float hlValue = curHL.hlValue
+        bool closeBelowHL = false
+        bool breakButCloseAbove = false
+        bool lowAboveCurrentHL = false
+        bool hasRecoveryWindow = vipHL.latestRecoveryWindows.contains(math.round_to_mintick(hlValue))
+
+        int barCountCloseAboveHL = 0
+        for y = searchRange to 1
+            if close[y] >= hlValue
+                barCountCloseAboveHL += 1
+
+        // previous bar has to be above hl
+        if not (close[1] < hlValue)
+            if close < hlValue
+                closeBelowHL := true
+            if close > hlValue and low < hlValue
+                breakButCloseAbove := true
+            if low > hlValue and hlValue * (1 + closeAvgPercent*0.01*lowAboveHLThreshold) >= low
+                lowAboveCurrentHL := true
+
+        if closeBelowHL or breakButCloseAbove or lowAboveCurrentHL
+            RecoveryWindow newWindow = RecoveryWindow.new(
+                     breakHLAtPrice = hlValue,
+                     breakHLAtBarIndex = bar_index,
+                     recoverAtBarIndex = na,
+                     breakHLExtendBarCross = curHL.barCrossesPostExtend,
+                     barCountCloseAboveHL = barCountCloseAboveHL,
+                     vipByPointCount = curHL.byPointValues.size()
+             ) 
+            vipHL.recoveryWindows.push(newWindow)
+
+    // remove recovery window if post trapRecoverWindowThreshold
+    bool doShift = false
+    if vipHL.recoveryWindows.size() > 0
+
+        // trapRecoverWindowThreshold * 3 is used to give some buffer for passRecoverWindow(see below function)
+        // to be picked up and correctly show bg color. Using 3 is a bit random
+        if vipHL.recoveryWindows.get(0).breakHLAtBarIndex + trapRecoverWindowThreshold * 3 < bar_index
+            doShift := true
+    while doShift
+        vipHL.recoveryWindows.shift()
+
+        if vipHL.recoveryWindows.size() <= 0
+            doShift := false
+
+        if vipHL.recoveryWindows.size() > 0
+            if vipHL.recoveryWindows.get(0).breakHLAtBarIndex + trapRecoverWindowThreshold * 3 >= bar_index
+                doShift := false
+
+export method checkRecoveryWindow(VipHL vipHL, float closeAvgPercent, float closeAboveHLThreshold, int trapRecoverWindowThreshold,
+     int signalWindow, float closeAboveLowThreshold, int barCountCloseAboveHLThreshold, int vvipHlMinByPointCount
+ ) =>
+    int recorveryWindowSize = vipHL.recoveryWindows.size()
+    bool hasSignal = false
+    bool isVvipSignal = false
+    bool closeAboveLowAndHL = false
+    bool violateExtendBarCross = false
+    bool violateRecoverWindow = false
+    bool violateSignalWindow = false
+    bool violateSearchRangeCloseAboveBarCount = false
+
+    RecoveryWindow recoveryWindow = na
+
+    for x = 0 to (recorveryWindowSize > 0 ? recorveryWindowSize - 1 : na)
+        RecoveryWindow curWindow = vipHL.recoveryWindows.get(x)
+        float hlValue = curWindow.breakHLAtPrice
+        bool hasRecoveryWindow = vipHL.latestRecoveryWindows.contains(math.round_to_mintick(hlValue))
+        bool closeAboveHL = close > curWindow.breakHLAtPrice * (1 + closeAvgPercent*0.01*closeAboveHLThreshold)
+        bool closeAboveLow = close > math.min(low, low[1]) * (1 + closeAvgPercent*0.01*closeAboveLowThreshold)
+
+        // has recovered already
+        if not na(curWindow.recoverAtBarIndex)
+            continue
+
+        if closeAboveHL and closeAboveLow
+            closeAboveLowAndHL := true
+
+            // setting recoverAtBarIndex here because if recovered but failed
+            // below validation, we dont want to keep track of this recover window
+            curWindow.recoverAtBarIndex := bar_index
+
+            // check all validation
+            bool passRecoverWindow = curWindow.recoverAtBarIndex - curWindow.breakHLAtBarIndex + 1 <= trapRecoverWindowThreshold
+            bool passSignalWindow = not hasRecoveryWindow or (bar_index - vipHL.latestRecoveryWindows.get(math.round_to_mintick(hlValue)) > signalWindow)
+            bool passSearchRangeCloseAboveHL = curWindow.barCountCloseAboveHL >= barCountCloseAboveHLThreshold
+            bool passExtendBarCross = curWindow.breakHLExtendBarCross <= vipHL.settings.hlExtendBarCrossThreshold
+            bool passAllValidation = passRecoverWindow and passSignalWindow and passSearchRangeCloseAboveHL and passExtendBarCross
+
+            if passAllValidation
+                hasSignal := true
+                violateExtendBarCross := false
+                violateRecoverWindow := false
+                violateSignalWindow := false
+                violateSearchRangeCloseAboveBarCount := false
+
+                recoveryWindow := curWindow.copy()
+                vipHL.latestRecoveryWindows.put(math.round_to_mintick(hlValue), bar_index)
+
+                if curWindow.vipByPointCount >= vvipHlMinByPointCount
+                    isVvipSignal := true
+
+                if vipHL.settings.showHLBreak
+                    line.new(
+                             curWindow.recoverAtBarIndex, 
+                             curWindow.breakHLAtPrice, 
+                             curWindow.recoverAtBarIndex + 1, 
+                             curWindow.breakHLAtPrice, 
+                             xloc.bar_index, 
+                             color = vipHL.settings.recoverHLColor, 
+                             width = vipHL.settings.recoverHLWidth,
+                             style = line.style_dotted
+                     )
+                break
+            else
+                violateExtendBarCross := not passExtendBarCross
+                violateRecoverWindow := not passRecoverWindow
+                violateSignalWindow := not passSignalWindow
+                violateSearchRangeCloseAboveBarCount := not passSearchRangeCloseAboveHL
+                recoveryWindow := curWindow.copy()
+        else
+            closeAboveLowAndHL := false
+    
+    // returning as many information as possibly can here
+    // library caller should use hasSignal/closeAboveLowAndHL along with 
+    // violation boolean such as violateExtendBarCross to debug
+    RecoveryWindowResult.new(
+         hasSignal,
+         isVvipSignal,
+         closeAboveLowAndHL,
+         violateExtendBarCross,
+         violateRecoverWindow,
+         violateSignalWindow,
+         violateSearchRangeCloseAboveBarCount,
+         recoveryWindow
+     )
+
+export method checkRecoveryWindowV2(VipHL vipHL, float closeAvgPercent, float closeAboveHLThreshold, int trapRecoverWindowThreshold,
+     int signalWindow, float closeAboveLowThreshold, int barCountCloseAboveHLThreshold, int vvipHlMinByPointCount
+ ) =>
+    int recorveryWindowSize = vipHL.recoveryWindows.size()
+    bool closeAboveLowAndHL = false
+    array<RecoveryWindowFailure> failures = array.new<RecoveryWindowFailure>()
+    array<RecoveryWindowSuccess> successes = array.new<RecoveryWindowSuccess>()
+
+    for x = 0 to (recorveryWindowSize > 0 ? recorveryWindowSize - 1 : na)
+        RecoveryWindow curWindow = vipHL.recoveryWindows.get(x)
+        float hlValue = curWindow.breakHLAtPrice
+        bool hasRecoveryWindow = vipHL.latestRecoveryWindows.contains(math.round_to_mintick(hlValue))
+        bool closeAboveHL = close > curWindow.breakHLAtPrice * (1 + closeAvgPercent*0.01*closeAboveHLThreshold)
+        bool closeAboveLow = close > math.min(low, low[1]) * (1 + closeAvgPercent*0.01*closeAboveLowThreshold)
+
+        // has recovered already
+        if not na(curWindow.recoverAtBarIndex)
+            continue
+
+        if closeAboveHL and closeAboveLow
+            closeAboveLowAndHL := true
+
+            // setting recoverAtBarIndex here because if recovered but failed
+            // below validation, we dont want to keep track of this recover window
+            curWindow.recoverAtBarIndex := bar_index
+
+            // check all validation
+            bool passRecoverWindow = curWindow.recoverAtBarIndex - curWindow.breakHLAtBarIndex + 1 <= trapRecoverWindowThreshold
+            bool passSignalWindow = not hasRecoveryWindow or (bar_index - vipHL.latestRecoveryWindows.get(math.round_to_mintick(hlValue)) > signalWindow)
+            bool passSearchRangeCloseAboveHL = curWindow.barCountCloseAboveHL >= barCountCloseAboveHLThreshold
+            bool passExtendBarCross = curWindow.breakHLExtendBarCross <= vipHL.settings.hlExtendBarCrossThreshold
+            bool passAllValidation = passRecoverWindow and passSignalWindow and passSearchRangeCloseAboveHL and passExtendBarCross
+
+            if passAllValidation
+                successes.push(
+                     RecoveryWindowSuccess.new(
+                         hasSignal = true,
+                         isVvipSignal = curWindow.vipByPointCount >= vvipHlMinByPointCount,
+                         signalDebugLine = na,
+                         recoveryWindow = curWindow.copy()
+                     )
+                 )
+            else
+                // only update violation conditions when no signal is found before
+                failures.push(
+                     RecoveryWindowFailure.new(
+                         closeAboveLowAndHL = closeAboveLowAndHL,
+                         violateExtendBarCross = not passExtendBarCross,
+                         violateRecoverWindow = not passRecoverWindow,
+                         violateSignalWindow = not passSignalWindow,
+                         violateSearchRangeCloseAboveBarCount = not passSearchRangeCloseAboveHL,
+                         recoveryWindow = curWindow.copy()
+                     )
+                 )
+
+    if successes.size() == 0 and failures.size() == 0
+        RecoveryWindowResultV2.new()
+    else
+        // only failures
+        if successes.size() == 0 and failures.size() >= 1
+            RecoveryWindowResultV2.new(failure = failures.last(), success = na)
+        // has successes
+        else if successes.size() >= 1
+            RecoveryWindowSuccess success = successes.getSuccessByVvip(
+                 vipHL.settings.showHLBreak,
+                 vipHL.settings.recoverHLColor,
+                 vipHL.settings.recoverHLWidth
+             )
+            // need to update the map
+            vipHL.latestRecoveryWindows.put(math.round_to_mintick(success.recoveryWindow.breakHLAtPrice), bar_index)
+
+            RecoveryWindowResultV2.new(success = success, failure = na)
+        else
+            RecoveryWindowResultV2.new()
+
+export method checkRecoveryWindowV3(VipHL vipHL, float closeAvgPercent, float closeAboveHLThreshold, int trapRecoverWindowThreshold,
+     int signalWindow, float closeAboveLowThreshold, float closeAboveRecoverLowThreshold, int barCountCloseAboveHLThreshold, 
+     int vvipHlMinByPointCount
+ ) =>
+    int recorveryWindowSize = vipHL.recoveryWindows.size()
+    bool closeAboveLowAndHL = false
+    array<RecoveryWindowFailure> failures = array.new<RecoveryWindowFailure>()
+    array<RecoveryWindowSuccess> successes = array.new<RecoveryWindowSuccess>()
+
+    for x = 0 to (recorveryWindowSize > 0 ? recorveryWindowSize - 1 : na)
+        RecoveryWindow curWindow = vipHL.recoveryWindows.get(x)
+        float hlValue = curWindow.breakHLAtPrice
+        bool hasRecoveryWindow = vipHL.latestRecoveryWindows.contains(math.round_to_mintick(hlValue))
+        bool closeAboveHL = close > curWindow.breakHLAtPrice * (1 + closeAvgPercent*0.01*closeAboveHLThreshold)
+        bool closeAboveLow = close > math.min(low, low[1]) * (1 + closeAvgPercent*0.01*closeAboveLowThreshold)
+
+        // has recovered already
+        if curWindow.recovered
+            continue
+
+        if closeAboveHL
+            closeAboveLowAndHL := true
+            // setting recoverAtBarIndex here because if recovered but failed
+            // below validation, we dont want to keep track of this recover window,
+            // also in V3, recovery bar may != signal bar. The definition of recovery bar
+            // becomes as soon as it close above hl, as is reset when t+1 close below hl again
+            if na(curWindow.recoverAtBarIndex)
+                curWindow.recoverAtBarIndex := bar_index
+
+            int recoveryBarOffset = bar_index - curWindow.recoverAtBarIndex
+            bool closeAboveRecoveryBar = close > low[recoveryBarOffset] * (1 + closeAvgPercent*0.01*closeAboveRecoverLowThreshold)
+
+            bool signalIsRecoverBar = bar_index == curWindow.recoverAtBarIndex
+            bool signalIsAfterRecoverBar = bar_index > curWindow.recoverAtBarIndex
+            // if signal bar is recovery bar, use 2day ca%; 
+            bool signalIsRecoverBarAndPassTwoDayLow = signalIsRecoverBar and closeAboveLow
+            // if not , use recovery bar low to signal bar close ca% 
+            // in this case recovery to signal might be 2 or 2+ bars, so that "move forward" signals vs 2day low rule
+            bool signalIsAfterRecoverBarAndPassRecoverDayLow = signalIsAfterRecoverBar and closeAboveRecoveryBar
+
+            if (signalIsRecoverBarAndPassTwoDayLow or signalIsAfterRecoverBarAndPassRecoverDayLow)
+                curWindow.recovered := true
+                // check all validation
+                bool passRecoverWindow = curWindow.recoverAtBarIndex - curWindow.breakHLAtBarIndex + 1 <= trapRecoverWindowThreshold
+                bool passSignalWindow = not hasRecoveryWindow or (bar_index - vipHL.latestRecoveryWindows.get(math.round_to_mintick(hlValue)) > signalWindow)
+                bool passSearchRangeCloseAboveHL = curWindow.barCountCloseAboveHL >= barCountCloseAboveHLThreshold
+                bool passExtendBarCross = curWindow.breakHLExtendBarCross <= vipHL.settings.hlExtendBarCrossThreshold
+                bool passAllValidation = passRecoverWindow and passSignalWindow and passSearchRangeCloseAboveHL and passExtendBarCross
+
+                if passAllValidation
+                    successes.push(
+                         RecoveryWindowSuccess.new(
+                             hasSignal = true,
+                             isVvipSignal = curWindow.vipByPointCount >= vvipHlMinByPointCount,
+                             signalDebugLine = na,
+                             recoveryWindow = curWindow.copy()
+                         )
+                     )
+                else
+                    // only update violation conditions when no signal is found before
+                    failures.push(
+                         RecoveryWindowFailure.new(
+                             closeAboveLowAndHL = closeAboveLowAndHL,
+                             violateExtendBarCross = not passExtendBarCross,
+                             violateRecoverWindow = not passRecoverWindow,
+                             violateSignalWindow = not passSignalWindow,
+                             violateSearchRangeCloseAboveBarCount = not passSearchRangeCloseAboveHL,
+                             recoveryWindow = curWindow.copy()
+                         )
+                     )
+        else
+            // reset recover bar to na if close below
+            curWindow.recoverAtBarIndex := na
+
+    if successes.size() == 0 and failures.size() == 0
+        RecoveryWindowResultV2.new()
+    else
+        // only failures
+        if successes.size() == 0 and failures.size() >= 1
+            RecoveryWindowResultV2.new(failure = failures.last(), success = na)
+        // has successes
+        else if successes.size() >= 1
+            RecoveryWindowSuccess success = successes.getSuccessByVvip(
+                 vipHL.settings.showHLBreak,
+                 vipHL.settings.recoverHLColor,
+                 vipHL.settings.recoverHLWidth
+             )
+            RecoveryWindowResultV2.new(success = success, failure = na)
+        else
+            RecoveryWindowResultV2.new()
+
+export method commitLatestRecoveryWindow(VipHL vipHL, float breakHLAtPrice) =>
+    vipHL.latestRecoveryWindows.put(math.round_to_mintick(breakHLAtPrice), bar_index)
+
+// @function TODO: add function description here
+// @param x TODO: add parameter x description here
+// @returns TODO: add what function returns
+export method update(VipHL vipHL, bool isMaTrending, float closeAvgPercent) =>
+
+    // update pivot points
+    bool newByPointFound = vipHL.addNewByPointsToPending(isMaTrending, closeAvgPercent)
+
+    if vipHL.settings.drawFromRecent and last_bar_index - bar_index < vipHL.settings.barCountToByPoint * 2
+        // 2. for each new by point
+        //  2.1. every new by point is a starting point
+        //  2.2. loop through existing by points, and construct new hl
+        if newByPointFound
+            vipHL.rebuildHLFromMostRecentByPoint()
+
+        // sort and filter hls
+        vipHL.sortAndFilterHLs()
+
+        // draw hl if missing after rebuild, for some reason this is required for draw from recent
+        int hlSize = array.size(vipHL.hls)
+        for x = 0 to (hlSize > 0 ? hlSize - 1 : na)
+            HL existingHL = vipHL.hls.get(x)
+            if na(existingHL.ln)
+                existingHL.ln := line.new(existingHL.startTime, existingHL.hlValue, existingHL.endTime, existingHL.hlValue, xloc.bar_time, color = vipHL.settings.vipHLColor)
+
+        vipHL.extendHLToFirstCrossFromHistory()
+    else
+        // update HL
+        vipHL.updateHorizontalLines(closeAvgPercent)
+        // sort and filter hls
+        vipHL.sortAndFilterHLs()
+        // check hls that has more than x number of crosses
+        vipHL.extendHLToFirstCross()
+
+    // return true if new by point found
+    newByPointFound
+
+// @function                            Instantiates a new `VipHL` object with optional `settings`. 
+//                                      If no `settings` are provided, creates a `VipHL` object with default settings. 
+// @param settings                      (series Settings) A `Settings` object. 
+// @returns                             (VipHL) A new `VipHL` instance. 
+export newInstance(series Settings settings = na) =>
+    VipHL result = VipHL.new(
+         na(settings) ? Settings.new() : settings,
+         array.new<HL>(),
+         array.new<ByPoint>(),
+         array.new<ByPoint>(),
+         array.new<RecoveryWindow>(),
+         map.new<float, int>()
+     )
+//#endregion
+
+
+//#region ———————————————————— Example Code
+bool v2Mode = input.bool(true, "v2 mode")
+bool drawFromRecent = input.bool(true, "Draw From Recent", group = "By Point设置")
+bool allowReuseByPoint = false//input.bool(false, "Allow reuse by point", group = "By Point设置")
+int highByPointN = input.int(10, "Normal VIP High By Point N/M", minval = 1, group = "By Point设置", inline = "HighByPoint")
+int highByPointM = input.int(10, "", minval = 1, group = "By Point设置", inline = "HighByPoint")
+int lowByPointN = input.int(8, "Normal VIP Low By Point N/M", minval = 1, group = "By Point设置", inline = "LowByPoint")
+int lowByPointM = input.int(8, "", minval = 1, group = "By Point设置", inline = "LowByPoint")
+int highByPointNOnTrend = input.int(5, "Trending VIP High By Point N/M", minval = 1, group = "By Point设置", inline = "TrendingHighByPoint")
+int highByPointMOnTrend = input.int(5, "", minval = 1, group = "By Point设置", inline = "TrendingHighByPoint")
+int lowByPointNOnTrend = input.int(4, "Trending VIP Low By Point N/M", minval = 1, group = "By Point设置", inline = "TrendingLowByPoint")
+int lowByPointMOnTrend = input.int(4, "", minval = 1, group = "By Point设置", inline = "TrendingLowByPoint")
+int trendingMaDeltaDstrThreshold = input.int(1, "Trending MA Delta Dstr Threshold", minval = 1, group = "By Point设置", tooltip = "多头排列：\n1. ma10> ma40 > ma 100\n2. ma10 - ma100 distance in the top 20%")
+int trendingMaDeltaDstrLookback = input.int(500, "Trending MA Delta Dstr Lookback", minval = 1, group = "By Point设置", tooltip = "Trending MA回测周期")
+bool showVipByPoint = input.bool(true, "Show VIP By Point", group = "By Point设置")
+bool showClosestVipHL = input.bool(true, "Show Closest VIP HL", group = "By Point设置", inline = "2")
+color closestHLColor = input.color(color.new(#ffa726, 50), "", group = "By Point设置", inline = "2")
+int closestHLWidth = input.int(3, "", group = "By Point设置", inline = "2")
+bool showMaTrending = input.bool(false, "Show Ma Trending", group = "By Point设置", inline = "0")
+color maTrendingBgColor = input.color(color.rgb(228, 127, 13, 90), "", group = "By Point设置", inline = "0")
+color vipHLColor = input.color(color.blue, "VIP HL Color", group = "By Point设置", inline = "0")
+int lastByPointWeight = input.int(3, "By Point Weight", minval = 1, group = "By Point设置", inline = "1", tooltip = "most recent / next recent / rest by point weight")
+int secondLastByPointWeight = input.int(2, "", minval = 1, group = "By Point设置", inline = "1")
+int byPointWeight = input.int(1, "", minval = 1, group = "By Point设置", inline = "1")
+
+int barCountToByPoint = input.int(700, "T-Bar Bar Count To Nearest VIP By Point", minval = 1, group = "HL Violation设置", tooltip = "Remove VIP HL if last by point is x bar from tbar")
+int barCrossThreshold = input.int(5, "VIP HL Cross Counts Threshold", minval = 1, group = "HL Violation设置", tooltip = "实体穿过HL x次后停止延长")
+int hlLengthThreshold = input.int(300, "VIP HL Length Threshold", minval = 1, group = "HL Violation设置", tooltip = "VIP HL超过x根bar后, 停止延长")
+
+bool onlyBodyCross = input.bool(true, "Body Cross Only", group = "入场点设置", tooltip = "Only count body cross")
+float closeAboveHLThreshold = input.float(defval = 0.25, title = "站稳HL至少CA的%", minval = 0, step = 0.01, group = "入场点设置", tooltip = "用于计算一个bar是否站稳HL,公式为close > or < HL_Avg*(1+CA*x*0.01), x为当前parameter")
+float closeAboveLowThreshold = input.float(defval = 1.25, title = "站稳2day low至少CA的%", minval = 0, step = 0.01, group = "入场点设置", tooltip = "if signal bar is recovery bar, use 2day ca%")
+float closeAboveRecoverLowThreshold = input.float(defval = 1.25, title = "recover bar low ca%", minval = 0, step = 0.01, group = "入场点设置", tooltip = "if signal bar is not recovery bar, use recovery bar low to signal bar close ca%")
+float lowAboveHLThreshold = input.float(defval = 0.5, title = "Low Above HL Threshold", minval = 0, step = 0.01, group = "入场点设置", tooltip = "用于计算一个bar是否touch HL,公式为low > HL*(1+CA*x*0.01), x为当前parameter")
+int hlExtendBarCrossThreshold = input.int(6, "Bar Cross Post Extend", minval = 1, group = "入场点设置", tooltip = "VIP HL extend后的bar cross超过x次后停止出信号", inline = "3")
+color hlExtendBarCrossBgColor = input.color(color.rgb(178, 181, 190, 80), "", group = "入场点设置", inline = "3")
+int closeAboveHLSearchRange = input.int(5, "回踩Search Range/Bar Count", minval = 1, group = "入场点设置", tooltip = "Search range for number of bars that close above HL before retest", inline = "5")
+int closeAboveHLBarCount = input.int(3, "", minval = 1, group = "入场点设置", tooltip = "Number of bars that close above HL before retest", inline = "5")
+color closeAboveHLSearchRangeBgColor = input.color(color.rgb(42, 201, 42, 80), "", group = "入场点设置", inline = "5")
+int trapRecoverWindowThreshold = input.int(6, title = "Recover Window", group = "入场点设置", tooltip = "If bar breaks HL but recover within X days, then consider this as a valid signal", inline = "6")
+color trapRecoverWindowBgColor = input.color(color.rgb(255, 153, 0, 80), "", group = "入场点设置", inline = "6")
+int signalWindow = input.int(2, title = "Signal Window", group = "入场点设置", tooltip = "No signal with same hl within x days", inline = "7")
+color signalWindowBgColor = input.color(#9b27b024, "", group = "入场点设置", inline = "7")
+bool showHLBreak = input.bool(true, "Show HL Break At Signal", group = "入场点设置", inline = "4")
+color recoverHLColor = input.color(color.rgb(0, 0, 0, 22), "", group = "入场点设置", inline = "4")
+int recoverHLWidth = input.int(4, "", group = "入场点设置", inline = "4")
+
+// -------vviphl--------
+int vvipHlMinByPointCount = input.int(defval = 2, title = "VVIP HL Min By P", minval = 0, step = 1, group = "VVIPHL设置")
+
+int closeAvgPercentLookback = input.int(500, title = "Close Average 回测周期", minval = 2, step = 1, group = "CA设置", tooltip = "close average的计算周期, 默认500")
+float hlOverlapCAPercentMultiplier = input.float(1.5, "HL Grouping CA Multipler", minval = 0, group = "CA设置", tooltip = "当两条HL的price diff < n * ca%, 合并成一条")
+
+bool debug = input.bool(false, "Debug Mode",group = "回测设置")
+int startTime = input.time(timestamp("22 May 2024 21:30 +0000"), "Start Date",group = "回测设置", confirm = true)
+int endTime = input.time(timestamp("23 Jun 2024 21:30 +0000"), "Start Date",group = "回测设置", confirm = true)
+float startPrice = input.price(60000, "Start Price",group = "回测设置", confirm = true)
+float endPrice = input.price(61000, "End Price",group = "回测设置", confirm = true)
+
+var Settings settings = 
+ Settings.new(
+     highByPointN, highByPointM,
+     lowByPointN, lowByPointM,
+     highByPointNOnTrend, highByPointMOnTrend,
+     lowByPointNOnTrend, lowByPointMOnTrend,
+     barCountToByPoint, barCrossThreshold,
+     hlLengthThreshold, hlOverlapCAPercentMultiplier, 
+     showVipByPoint, showClosestVipHL,
+     showHLBreak, onlyBodyCross, lastByPointWeight, 
+     secondLastByPointWeight, byPointWeight, 
+     hlExtendBarCrossThreshold, vipHLColor, 
+     closestHLColor, closestHLWidth,
+     recoverHLColor, recoverHLWidth,
+     drawFromRecent, allowReuseByPoint, 
+     debug, startTime, 
+     endTime, startPrice, 
+     endPrice
+ )
+
+var VipHL vipHL = newInstance(settings)
+
+// ----closeAvgPercent-----
+var closeAvgPercentSettings = CloseAveragePercent.Settings.new(closeAvgPercentLookback)
+var closeAvgPercentInstance = CloseAveragePercent.CloseAveragePercent.new(closeAvgPercentSettings)
+float closeAvgPercent = closeAvgPercentInstance.getValue()
+
+float trendingMaDelta = ta.sma(close, 10) - ta.sma(close, 100)
+int length = bar_index >= trendingMaDeltaDstrLookback ? trendingMaDeltaDstrLookback : math.max(1, bar_index)
+float trendingMaDeltaPercentile = ta.percentile_nearest_rank(trendingMaDelta, length, trendingMaDeltaDstrThreshold)
+bool isMaTrending = trendingMaDelta > trendingMaDeltaPercentile and (ta.sma(close, 10) > ta.sma(close, 40) and ta.sma(close, 40) > ta.sma(close, 100))
+
+vipHL.update(isMaTrending, closeAvgPercent)
+
+float normalHighByPoint = ta.pivothigh(high, highByPointN, highByPointM)
+float normalLowByPoint = ta.pivotlow(low, lowByPointN, lowByPointM)
+float trendingHighByPoint = ta.pivothigh(high, highByPointNOnTrend, highByPointMOnTrend)
+float trendingLowByPoint = ta.pivotlow(low, lowByPointNOnTrend, lowByPointMOnTrend)
+
+bool shouldPlotNormalHighBy = not na(normalHighByPoint) and showVipByPoint and not isMaTrending[highByPointM]
+bool shouldPlotNormalLowBy = not na(normalLowByPoint) and showVipByPoint and not isMaTrending[lowByPointM]
+bool shouldPlotTrendingHighBy = not na(trendingHighByPoint) and showVipByPoint and isMaTrending[highByPointMOnTrend]
+bool shouldPlotTrendingLowBy = not na(trendingLowByPoint) and showVipByPoint and isMaTrending[lowByPointMOnTrend]
+
+plotshape(shouldPlotNormalHighBy, style=shape.cross, color= color.orange, offset=-highByPointM, location=location.abovebar, size=size.normal)
+plotshape(shouldPlotNormalLowBy, style=shape.cross, color= color.aqua, offset=-lowByPointM, location=location.belowbar, size=size.normal)
+plotshape(shouldPlotTrendingHighBy, style=shape.triangledown, color= color.red, offset=-highByPointMOnTrend, location=location.abovebar, size=size.small)
+plotshape(shouldPlotTrendingLowBy, style=shape.triangleup, color= color.lime, offset=-lowByPointMOnTrend, location=location.belowbar, size=size.small)
+
+vipHL.updateRecoveryWindow(
+     trapRecoverWindowThreshold, 
+     closeAboveHLSearchRange, 
+     lowAboveHLThreshold, 
+     closeAvgPercent
+ )
+
+// RecoveryWindowResult recoveryWindowResult = vipHL.checkRecoveryWindow(
+//      closeAvgPercent, 
+//      closeAboveHLThreshold, 
+//      trapRecoverWindowThreshold, 
+//      signalWindow,
+//      closeAboveLowThreshold,
+//      closeAboveHLBarCount,
+//      vvipHlMinByPointCount
+//  )
+RecoveryWindowResultV2 recoveryWindowResultV2 = na
+if v2Mode
+    recoveryWindowResultV2 := vipHL.checkRecoveryWindowV2(
+         closeAvgPercent, 
+         closeAboveHLThreshold, 
+         trapRecoverWindowThreshold, 
+         signalWindow,
+         closeAboveLowThreshold,
+         closeAboveHLBarCount,
+         vvipHlMinByPointCount
+     )
+else
+    recoveryWindowResultV2 := vipHL.checkRecoveryWindowV3(
+         closeAvgPercent, 
+         closeAboveHLThreshold, 
+         trapRecoverWindowThreshold, 
+         signalWindow,
+         closeAboveLowThreshold,
+         closeAboveRecoverLowThreshold,
+         closeAboveHLBarCount,
+         vvipHlMinByPointCount
+     )
+
+// bool noSignalButCloseAbove = (not recoveryWindowResult.hasSignal) and recoveryWindowResult.closeAboveLowAndHL
+bool noSignalButCloseAbove = recoveryWindowResultV2.noSignalButCloseAbove()
+color signalFilterBgColor = switch
+    not noSignalButCloseAbove => na
+    =>
+        switch
+            // recoveryWindowResult.violateExtendBarCross => hlExtendBarCrossBgColor
+            // recoveryWindowResult.violateSearchRangeCloseAboveBarCount => closeAboveHLSearchRangeBgColor
+            // recoveryWindowResult.violateRecoverWindow => trapRecoverWindowBgColor
+            // recoveryWindowResult.violateSignalWindow => signalWindowBgColor
+            recoveryWindowResultV2.failure.violateExtendBarCross => hlExtendBarCrossBgColor
+            recoveryWindowResultV2.failure.violateSearchRangeCloseAboveBarCount => closeAboveHLSearchRangeBgColor
+            recoveryWindowResultV2.failure.violateRecoverWindow => trapRecoverWindowBgColor
+            recoveryWindowResultV2.failure.violateSignalWindow => signalWindowBgColor
+            => na
+
+bgcolor(isMaTrending and showMaTrending ? color.rgb(228, 127, 13, 90) : na)
+// bgcolor(recoveryWindowResult.hasSignal ? #b6cf1152 : na)
+bgcolor(recoveryWindowResultV2.isHLSatisfied() ? #b6cf1152 : na)
+// bgcolor(recoveryWindowResult.hasSignal and recoveryWindowResult.isVvipSignal ? color.rgb(207, 17, 17, 68) : na)
+bgcolor(signalFilterBgColor)
+// if barstate.islast or barstate.islastconfirmedhistory
+//     for hl in vipHL.hls
+//         byPointValueString = ""
+//         for hlByPoint in hl.byPointValues
+//             byPointValueString += str.format("{0}\n", hlByPoint)
+
+//         // if time > timestamp("05 Jul 2024 21:30 +0000")
+//         Debug.printDebugBelowBar(byPointValueString, hl.endTime, true)
+//#endregion

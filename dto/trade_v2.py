@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Tuple
 
 @dataclass
 class TradeV2:
@@ -21,3 +22,8 @@ class TradeV2:
     second_time: int = 0
     second_return: float = 0.0
     stop_loss_percent: float = 0.0
+    
+    # NEW: Store the mn used for this trade's scaling
+    trade_mn_high: Tuple[float, float] = (0.0, 0.0)
+    trade_mn_low: Tuple[float, float] = (0.0, 0.0)
+    original_combined_score: float = 0.0
