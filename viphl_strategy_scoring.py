@@ -404,7 +404,10 @@ class VipHLStrategy(bt.Strategy):
             second_last_by_point_weight=self.p.second_last_by_point_weight,
             by_point_weight=self.p.by_point_weight,
             hl_extend_bar_cross_threshold=self.p.hl_extend_bar_cross_threshold,
-            
+            dynamic_mn_enabled=self.p.dynamic_mn_enabled,
+            dynamic_mn_start=self.p.dynamic_mn_start,
+            dynamic_mn_step=self.p.dynamic_mn_step,
+            max_mn_cap=self.p.max_mn_cap,
         )
         self.viphl = VipHL( # entry point?
             close=self.data.close,
@@ -419,6 +422,7 @@ class VipHLStrategy(bt.Strategy):
             hls=[],
             vip_by_points=[],
             new_vip_by_points=[],
+            pending_dynamic_by_points=[],
             recovery_windows=[],
             latest_recovery_windows={},
             normal_high_by_point=self.normal_high_by_point,
@@ -501,9 +505,11 @@ class VipHLStrategy(bt.Strategy):
         break_hl_at_price: float = flattern.break_hl_at_price
         is_hl_satisfied: bool = flattern.is_hl_satisfied
         is_vvip_signal: bool = flattern.is_vvip_signal
+        hl_avg_m = flattern.hl_avg_pivot_m if flattern.hl_avg_pivot_m > 0 else None
+        hl_avg_n = flattern.hl_avg_pivot_n if flattern.hl_avg_pivot_n > 0 else None
 
         # Check stop loss
-        quoted_trade = self.quote_trade()
+        quoted_trade = self.quote_trade(hl_m=hl_avg_m, hl_n=hl_avg_n)
         # Calculate stop loss thresholds
         # whats difference between normal and vviphl?
         stoploss_below_threshold = quoted_trade.stop_loss_percent < self.close_average_percent[0] * self.p.reduce_stop_loss_threshold
@@ -523,18 +529,22 @@ class VipHLStrategy(bt.Strategy):
 
         if within_lookback_period:# what is lookback period?
             if has_long_signal or has_vvip_long_signal:
-                self.record_trade(0)
+                self.record_trade(0, hl_m=hl_avg_m, hl_n=hl_avg_n)
                 self.viphl.commit_latest_recovery_window(break_hl_at_price)
 
         self.manage_trade()
 
-    def quote_trade(self):
+    def quote_trade(self, hl_m=None, hl_n=None):
         # Calculate stop loss
         stop_loss_long = min(self.data.low[0], self.data.low[-1])
         stop_loss_percent = (self.data.close[0] - stop_loss_long) / self.data.close[0] * 100
 
-        # Get current mn values (dynamic or static)
-        (high_m, high_n), (low_m, low_n) = self.get_current_mn_values()
+        # Get current mn values (HL-provided or fallback to dynamic/static detection)
+        if hl_m is not None and hl_n is not None:
+            high_m = high_n = hl_m
+            low_m = low_n = hl_n
+        else:
+            (high_m, high_n), (low_m, low_n) = self.get_current_mn_values()
 
         # Calculate HL byP scores using the determined m,n values
         high_score = self.calculate_hl_byp_score(
@@ -589,9 +599,13 @@ class VipHLStrategy(bt.Strategy):
 
         return new_trade
 
-    def record_trade(self, extend_bar_signal_offset):
-        # Get current mn values (dynamic or static)
-        (high_m, high_n), (low_m, low_n) = self.get_current_mn_values()
+    def record_trade(self, extend_bar_signal_offset, hl_m=None, hl_n=None):
+        # Get current mn values (HL-provided or fallback to dynamic/static detection)
+        if hl_m is not None and hl_n is not None:
+            high_m = high_n = hl_m
+            low_m = low_n = hl_n
+        else:
+            (high_m, high_n), (low_m, low_n) = self.get_current_mn_values()
 
         # Calculate HL byP scores using the determined m,n values
         high_score = self.calculate_hl_byp_score(
