@@ -24,13 +24,9 @@ def run_strategy_and_plot(csv_file='BTC.csv', save_plot=True):
     pandasData = bt.feeds.PandasData(dataname=dataframe)
     cerebro.adddata(pandasData)
     cerebro.broker.set_coc(True)
-<<<<<<< Updated upstream
 
     dynamic_start = 4
 
-=======
-    mn_start = 10
->>>>>>> Stashed changes
     # Add strategy with configuration
     cerebro.addstrategy(
         VipHLStrategy,
@@ -38,16 +34,11 @@ def run_strategy_and_plot(csv_file='BTC.csv', save_plot=True):
         
         # Dynamic mn configuration
         dynamic_mn_enabled=True,    # Enable dynamic mn detection
-<<<<<<< Updated upstream
         dynamic_mn_start=dynamic_start,         # Start testing from mn=4
-=======
-        dynamic_mn_start=mn_start,         # Start testing from mn=4
->>>>>>> Stashed changes
         dynamic_mn_step=1,          # Increment by 1
         max_mn_cap=20,              # Maximum mn value
         
         # Static fallback parameters
-<<<<<<< Updated upstream
         high_by_point_n=dynamic_start,
         high_by_point_m=dynamic_start,
         low_by_point_n=dynamic_start,
@@ -56,16 +47,6 @@ def run_strategy_and_plot(csv_file='BTC.csv', save_plot=True):
         high_by_point_m_on_trend=dynamic_start,
         low_by_point_n_on_trend=dynamic_start,
         low_by_point_m_on_trend=dynamic_start,
-=======
-        high_by_point_n=mn_start,
-        high_by_point_m=mn_start,
-        low_by_point_n=mn_start,
-        low_by_point_m=mn_start,
-        high_by_point_n_on_trend=mn_start,
-        high_by_point_m_on_trend=mn_start,
-        low_by_point_n_on_trend=mn_start,
-        low_by_point_m_on_trend=mn_start,
->>>>>>> Stashed changes
         
         power_scaling_factor=1.5,
         high_score_scaling_factor=0.5,
