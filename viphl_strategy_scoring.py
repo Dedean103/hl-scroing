@@ -142,6 +142,53 @@ class VipHLStrategy(bt.Strategy):
 
         return final_score
 
+    def calculate_stop_loss_percent(self):
+        stop_loss_long = min(self.data.low[0], self.data.low[-1])
+        return (self.data.close[0] - stop_loss_long) / self.data.close[0] * 100
+
+    def build_scoring_params(self, flattern):
+        is_trending = bool(self.is_ma_trending[0])
+
+        def resolve(value, trending_default, normal_default):
+            if value and value > 0:
+                return value
+            return trending_default if is_trending else normal_default
+
+        high_m = resolve(flattern.weighted_high_m, self.p.high_by_point_m_on_trend, self.p.high_by_point_m)
+        high_n = resolve(flattern.weighted_high_n, self.p.high_by_point_n_on_trend, self.p.high_by_point_n)
+        low_m = resolve(flattern.weighted_low_m, self.p.low_by_point_m_on_trend, self.p.low_by_point_m)
+        low_n = resolve(flattern.weighted_low_n, self.p.low_by_point_n_on_trend, self.p.low_by_point_n)
+
+        return dict(high_m=high_m, high_n=high_n, low_m=low_m, low_n=low_n)
+
+    def compute_scoring_metrics(self, scoring_params):
+        is_trending = bool(self.is_ma_trending[0])
+        high_score = self.calculate_hl_byp_score(
+            scoring_params['high_m'],
+            scoring_params['high_n'],
+            pivot_type='high',
+            is_trending=is_trending
+        )
+        low_score = self.calculate_hl_byp_score(
+            scoring_params['low_m'],
+            scoring_params['low_n'],
+            pivot_type='low',
+            is_trending=is_trending
+        )
+
+        weighted_high = high_score * self.p.high_score_scaling_factor
+        weighted_low = low_score * self.p.low_score_scaling_factor
+        total_weight = self.p.high_score_scaling_factor + self.p.low_score_scaling_factor
+        combined_score = (weighted_high + weighted_low) / total_weight
+
+        return dict(
+            combined_score=combined_score,
+            high_score=high_score,
+            low_score=low_score,
+            weighted_high=weighted_high,
+            weighted_low=weighted_low
+        )
+
     def calculate_pnl_scale(self, combined_score):
         '''
         Maps combined_score (0-1) to PnL scale (1-3)
@@ -186,10 +233,30 @@ class VipHLStrategy(bt.Strategy):
         '''
         #pivot point meaning the local max/min within the window
         # shouldnt trending be greater than normal?
-        self.normal_high_by_point = PivotHigh(leftbars=self.p.high_by_point_n, rightbars=self.p.high_by_point_m)
-        self.normal_low_by_point = PivotLow(leftbars=self.p.low_by_point_n, rightbars=self.p.low_by_point_m)
-        self.trending_high_by_point = PivotHigh(leftbars=self.p.high_by_point_n_on_trend, rightbars=self.p.high_by_point_m_on_trend)
-        self.trending_low_by_point = PivotLow(leftbars=self.p.low_by_point_n_on_trend, rightbars=self.p.low_by_point_m_on_trend)
+        self.normal_high_by_point = PivotHigh(
+            leftbars=self.p.high_by_point_n,
+            rightbars=self.p.high_by_point_m,
+            mn_start=self.p.mn_start_point_high,
+            mn_cap=self.p.mn_cap_high,
+        )
+        self.normal_low_by_point = PivotLow(
+            leftbars=self.p.low_by_point_n,
+            rightbars=self.p.low_by_point_m,
+            mn_start=self.p.mn_start_point_low,
+            mn_cap=self.p.mn_cap_low,
+        )
+        self.trending_high_by_point = PivotHigh(
+            leftbars=self.p.high_by_point_n_on_trend,
+            rightbars=self.p.high_by_point_m_on_trend,
+            mn_start=self.p.mn_start_point_high_trend,
+            mn_cap=self.p.mn_cap_high_trend,
+        )
+        self.trending_low_by_point = PivotLow(
+            leftbars=self.p.low_by_point_n_on_trend,
+            rightbars=self.p.low_by_point_m_on_trend,
+            mn_start=self.p.mn_start_point_low_trend,
+            mn_cap=self.p.mn_cap_low_trend,
+        )
 
 
         self.ma10 = bt.indicators.SMA(self.data.close, period=10)
@@ -317,10 +384,10 @@ class VipHLStrategy(bt.Strategy):
         is_hl_satisfied: bool = flattern.is_hl_satisfied
         is_vvip_signal: bool = flattern.is_vvip_signal
 
-        # Check stop loss
-        quoted_trade = self.quote_trade()
-        # Calculate stop loss thresholds
-        # whats difference between normal and vviphl?
+        scoring_params = self.build_scoring_params(flattern)
+        scoring_metrics = self.compute_scoring_metrics(scoring_params)
+        quoted_trade = self.quote_trade(scoring_metrics)
+
         stoploss_below_threshold = quoted_trade.stop_loss_percent < self.close_average_percent[0] * self.p.reduce_stop_loss_threshold
         vviphl_stoploss_below_threshold = quoted_trade.stop_loss_percent < self.close_average_percent[0] * self.p.vviphl_reduce_stop_loss_threshold
 
@@ -338,59 +405,21 @@ class VipHLStrategy(bt.Strategy):
 
         if within_lookback_period:# what is lookback period?
             if has_long_signal or has_vvip_long_signal:
-                self.record_trade(0)
+                self.record_trade(0, scoring_metrics)
                 self.viphl.commit_latest_recovery_window(break_hl_at_price)
 
         self.manage_trade()
 
-    def quote_trade(self):
-        # Calculate stop loss
-        stop_loss_long = min(self.data.low[0], self.data.low[-1])
-        stop_loss_percent = (self.data.close[0] - stop_loss_long) / self.data.close[0] * 100
+    def quote_trade(self, scoring_metrics):
+        stop_loss_percent = self.calculate_stop_loss_percent()
 
-        # Calculate HL byP scores for current market condition
-        if self.is_ma_trending[0]:
-            high_score = self.calculate_hl_byp_score(
-                self.p.high_by_point_m_on_trend, 
-                self.p.high_by_point_n_on_trend, 
-                pivot_type='high', 
-                is_trending=True
-            )
-            low_score = self.calculate_hl_byp_score(
-                self.p.low_by_point_m_on_trend, 
-                self.p.low_by_point_n_on_trend, 
-                pivot_type='low', 
-                is_trending=True
-            )
-        else:
-            high_score = self.calculate_hl_byp_score(
-                self.p.high_by_point_m, 
-                self.p.high_by_point_n, 
-                pivot_type='high', 
-                is_trending=False
-            )
-            low_score = self.calculate_hl_byp_score(
-                self.p.low_by_point_m, 
-                self.p.low_by_point_n, 
-                pivot_type='low', 
-                is_trending=False
-            )
-
-        # Combined score for trade size adjustment with scaling factors
-        weighted_high = high_score * self.p.high_score_scaling_factor
-        weighted_low = low_score * self.p.low_score_scaling_factor
-        total_weight = self.p.high_score_scaling_factor + self.p.low_score_scaling_factor
-        combined_score = (weighted_high + weighted_low) / total_weight
-
-        # Debug logging for weighted scoring
         if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
-            print(f"[DEBUG] Combined Score - High: {high_score:.3f}*{self.p.high_score_scaling_factor:.1f}={weighted_high:.3f}, "
-                  f"Low: {low_score:.3f}*{self.p.low_score_scaling_factor:.1f}={weighted_low:.3f}, "
-                  f"Combined: {combined_score:.3f}")
+            print(f"[DEBUG] Combined Score - High: {scoring_metrics['high_score']:.3f}*{self.p.high_score_scaling_factor:.1f}={scoring_metrics['weighted_high']:.3f}, "
+                  f"Low: {scoring_metrics['low_score']:.3f}*{self.p.low_score_scaling_factor:.1f}={scoring_metrics['weighted_low']:.3f}, "
+                  f"Combined: {scoring_metrics['combined_score']:.3f}")
 
-        # Calculate entry size with scoring adjustment
         base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])
-        entry_size = math.floor(base_entry_size * combined_score)
+        entry_size = max(1, math.floor(base_entry_size * scoring_metrics['combined_score']))
 
         # Create a new trade
         new_trade = TradeV2(
@@ -408,53 +437,18 @@ class VipHLStrategy(bt.Strategy):
 
         return new_trade
 
-    def record_trade(self, extend_bar_signal_offset):
-        # Calculate HL byP scores for current market condition
-        if self.is_ma_trending[0]:
-            high_score = self.calculate_hl_byp_score(
-                self.p.high_by_point_m_on_trend,
-                self.p.high_by_point_n_on_trend,
-                pivot_type='high',
-                is_trending=True
-            )
-            low_score = self.calculate_hl_byp_score(
-                self.p.low_by_point_m_on_trend,
-                self.p.low_by_point_n_on_trend,
-                pivot_type='low',
-                is_trending=True
-            )
-        else:
-            high_score = self.calculate_hl_byp_score(
-                self.p.high_by_point_m,
-                self.p.high_by_point_n,
-                pivot_type='high',
-                is_trending=False
-            )
-            low_score = self.calculate_hl_byp_score(
-                self.p.low_by_point_m,
-                self.p.low_by_point_n,
-                pivot_type='low',
-                is_trending=False
-            )
+    def record_trade(self, extend_bar_signal_offset, scoring_metrics):
+        combined_score = scoring_metrics['combined_score']
 
-        # Combined score for trade size adjustment with scaling factors
-        weighted_high = high_score * self.p.high_score_scaling_factor
-        weighted_low = low_score * self.p.low_score_scaling_factor
-        total_weight = self.p.high_score_scaling_factor + self.p.low_score_scaling_factor
-        combined_score = (weighted_high + weighted_low) / total_weight
-
-        # Debug logging for weighted scoring
         if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
-            print(f"[DEBUG] Combined Score - High: {high_score:.3f}*{self.p.high_score_scaling_factor:.1f}={weighted_high:.3f}, "
-                  f"Low: {low_score:.3f}*{self.p.low_score_scaling_factor:.1f}={weighted_low:.3f}, "
+            print(f"[DEBUG] Combined Score - High: {scoring_metrics['high_score']:.3f}*{self.p.high_score_scaling_factor:.1f}={scoring_metrics['weighted_high']:.3f}, "
+                  f"Low: {scoring_metrics['low_score']:.3f}*{self.p.low_score_scaling_factor:.1f}={scoring_metrics['weighted_low']:.3f}, "
                   f"Combined: {combined_score:.3f}")
 
-        # Calculate PnL scale from combined score
         pnl_scale = self.calculate_pnl_scale(combined_score)
 
-        # Calculate entry size WITHOUT scoring adjustment (use base size only)
         base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])
-        entry_size = base_entry_size
+        entry_size = max(1, math.floor(base_entry_size * combined_score))
 
         self.trade_list.append(
             TradeV2(
