@@ -112,6 +112,7 @@ def build_strategy_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
     config["high_score_scaling_factor"] = args.high_score_scaling_factor
     config["low_score_scaling_factor"] = args.low_score_scaling_factor
     config["on_trend_ratio"] = args.on_trend_ratio
+    config["debug_mode"] = bool(args.debug)
 
     return config
 
@@ -400,6 +401,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument("--high-score-scaling-factor", type=float, default=0.5, help="Weight on high pivots.")
     parser.add_argument("--low-score-scaling-factor", type=float, default=0.5, help="Weight on low pivots.")
     parser.add_argument("--on-trend-ratio", type=float, default=1.0, help="Weight boost applied in trending mode.")
+    parser.add_argument("--debug", action="store_true", help="Enable debug output for ByPoint/HL construction.")
     parser.add_argument("--no-save", action="store_true", help="Skip saving the PNG output.")
     parser.add_argument("--no-show", action="store_true", help="Skip displaying the matplotlib window.")
     parser.add_argument(

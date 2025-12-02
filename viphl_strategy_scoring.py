@@ -302,6 +302,7 @@ class VipHLStrategy(bt.Strategy):
             second_last_by_point_weight=self.p.second_last_by_point_weight,
             by_point_weight=self.p.by_point_weight,
             hl_extend_bar_cross_threshold=self.p.hl_extend_bar_cross_threshold,
+            debug=self.p.debug_mode,
             
         )
         self.viphl = VipHL( # entry point?
