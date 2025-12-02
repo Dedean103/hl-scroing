@@ -239,24 +239,36 @@ class VipHLStrategy(bt.Strategy):
             rightbars=self.p.high_by_point_m,
             mn_start=self.p.mn_start_point_high,
             mn_cap=self.p.mn_cap_high,
+            debug=self.p.debug_mode,
+            debug_log_path=self.p.debug_log_path,
+            label="normal_high_pivot",
         )
         self.normal_low_by_point = PivotLow(
             leftbars=self.p.low_by_point_n,
             rightbars=self.p.low_by_point_m,
             mn_start=self.p.mn_start_point_low,
             mn_cap=self.p.mn_cap_low,
+            debug=self.p.debug_mode,
+            debug_log_path=self.p.debug_log_path,
+            label="normal_low_pivot",
         )
         self.trending_high_by_point = PivotHigh(
             leftbars=self.p.high_by_point_n_on_trend,
             rightbars=self.p.high_by_point_m_on_trend,
             mn_start=self.p.mn_start_point_high_trend,
             mn_cap=self.p.mn_cap_high_trend,
+            debug=self.p.debug_mode,
+            debug_log_path=self.p.debug_log_path,
+            label="trending_high_pivot",
         )
         self.trending_low_by_point = PivotLow(
             leftbars=self.p.low_by_point_n_on_trend,
             rightbars=self.p.low_by_point_m_on_trend,
             mn_start=self.p.mn_start_point_low_trend,
             mn_cap=self.p.mn_cap_low_trend,
+            debug=self.p.debug_mode,
+            debug_log_path=self.p.debug_log_path,
+            label="trending_low_pivot",
         )
 
 
