@@ -47,12 +47,12 @@ DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
     "low_by_point_n_on_trend": 4,
     "low_by_point_m_on_trend": 4,
     # Dynamic detector caps
-    "mn_start_point_high": 4,
-    "mn_start_point_low": 4,
+    "mn_start_point_high": 10,
+    "mn_start_point_low": 10,
     "mn_cap_high": 20,
     "mn_cap_low": 20,
-    "mn_start_point_high_trend": 4,
-    "mn_start_point_low_trend": 4,
+    "mn_start_point_high_trend": 10,
+    "mn_start_point_low_trend": 10,
     "mn_cap_high_trend": 20,
     "mn_cap_low_trend": 20,
     # Scoring

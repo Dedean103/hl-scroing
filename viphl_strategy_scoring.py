@@ -51,7 +51,7 @@ class VipHLStrategy(bt.Strategy):
 
         # HL byP Scoring设置
         ('max_mn_cap', 20),
-        ('enable_hl_byp_scoring', True),
+        ('enable_hl_byp_scoring', False),
         ('on_trend_ratio', 1.5),
         ('power_scaling_factor', 1.0),       # k: exponent for window scoring (m**k + n**k)
         ('high_score_scaling_factor', 1.0),  # Weight for high pivot contribution
