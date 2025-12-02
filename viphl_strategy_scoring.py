@@ -102,6 +102,7 @@ class VipHLStrategy(bt.Strategy):
         ('stop_gain_pt', 30.0),  # Equivalent to stopGainPt
         ('toggle_pnl', True), #what is this?
         ('debug_mode', False),  # Enable/disable debug printing
+        ('debug_log_path', ''),
     )
 
     def log(self, txt, dt=None, doprint=True):
@@ -303,6 +304,7 @@ class VipHLStrategy(bt.Strategy):
             by_point_weight=self.p.by_point_weight,
             hl_extend_bar_cross_threshold=self.p.hl_extend_bar_cross_threshold,
             debug=self.p.debug_mode,
+            debug_log_path=self.p.debug_log_path,
             
         )
         self.viphl = VipHL( # entry point?

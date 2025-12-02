@@ -64,6 +64,7 @@ DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
     # Misc
     "mintick": 0.01,
     "debug_mode": False,
+    "debug_log_path": "",
 }
 
 
@@ -113,6 +114,7 @@ def build_strategy_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
     config["low_score_scaling_factor"] = args.low_score_scaling_factor
     config["on_trend_ratio"] = args.on_trend_ratio
     config["debug_mode"] = bool(args.debug)
+    config["debug_log_path"] = args.debug_log
 
     return config
 
@@ -168,6 +170,7 @@ def run_strategy_and_plot(
         "low_score_scaling_factor": strat.params.low_score_scaling_factor,
         "on_trend_ratio": strat.params.on_trend_ratio,
         "enable_hl_byp_scoring": strat.params.enable_hl_byp_scoring,
+        "debug_log_path": strat.params.debug_log_path,
     }
 
     plot_trade_results(
@@ -402,6 +405,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument("--low-score-scaling-factor", type=float, default=0.5, help="Weight on low pivots.")
     parser.add_argument("--on-trend-ratio", type=float, default=1.0, help="Weight boost applied in trending mode.")
     parser.add_argument("--debug", action="store_true", help="Enable debug output for ByPoint/HL construction.")
+    parser.add_argument("--debug-log", default="", help="Path to append debug markdown output.")
     parser.add_argument("--no-save", action="store_true", help="Skip saving the PNG output.")
     parser.add_argument("--no-show", action="store_true", help="Skip displaying the matplotlib window.")
     parser.add_argument(
