@@ -412,9 +412,9 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument("--on-trend-ratio", type=float, default=1.0, help="Weight boost applied in trending mode.")
     parser.add_argument("--enable-scoring", dest="enable_scoring", action="store_true", help="Enable HL-by-point scoring.")
     parser.add_argument("--disable-scoring", dest="enable_scoring", action="store_false", help="Disable HL-by-point scoring.")
-    parser.set_defaults(enable_scoring=None)
+    parser.set_defaults(enable_scoring=True)
     parser.add_argument("--bar-count-to-by-point", type=int, default=None, help="Override the draw-from-recent window size.")
-    parser.add_argument("--debug-log", default="", help="Path to append debug markdown output.")
+    parser.add_argument("--debug-log", default=str(ROOT / "debug_trace.md"), help="Path to append debug markdown output.")
     parser.add_argument("--no-save", action="store_true", help="Skip saving the PNG output.")
     parser.add_argument("--no-show", action="store_true", help="Skip displaying the matplotlib window.")
     parser.add_argument(
