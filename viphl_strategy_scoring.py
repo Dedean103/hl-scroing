@@ -168,17 +168,39 @@ class VipHLStrategy(bt.Strategy):
     def build_scoring_params(self, flattern):
         is_trending = bool(self.is_ma_trending[0])
 
-        def resolve(value, trending_default, normal_default):
-            if value and value > 0:
-                return value
-            return trending_default if is_trending else normal_default
+        def resolve(value_m, value_n, trending_default_m, trending_default_n, normal_default_m, normal_default_n):
+            if value_m and value_m > 0 and value_n and value_n > 0:
+                return value_m, value_n, "dynamic"
+            if is_trending:
+                return trending_default_m, trending_default_n, "trend_default"
+            return normal_default_m, normal_default_n, "normal_default"
 
-        high_m = resolve(flattern.weighted_high_m, self.p.high_by_point_m_on_trend, self.p.high_by_point_m)
-        high_n = resolve(flattern.weighted_high_n, self.p.high_by_point_n_on_trend, self.p.high_by_point_n)
-        low_m = resolve(flattern.weighted_low_m, self.p.low_by_point_m_on_trend, self.p.low_by_point_m)
-        low_n = resolve(flattern.weighted_low_n, self.p.low_by_point_n_on_trend, self.p.low_by_point_n)
+        high_m, high_n, high_source = resolve(
+            flattern.weighted_high_m,
+            flattern.weighted_high_n,
+            self.p.high_by_point_m_on_trend,
+            self.p.high_by_point_n_on_trend,
+            self.p.high_by_point_m,
+            self.p.high_by_point_n,
+        )
 
-        return dict(high_m=high_m, high_n=high_n, low_m=low_m, low_n=low_n)
+        low_m, low_n, low_source = resolve(
+            flattern.weighted_low_m,
+            flattern.weighted_low_n,
+            self.p.low_by_point_m_on_trend,
+            self.p.low_by_point_n_on_trend,
+            self.p.low_by_point_m,
+            self.p.low_by_point_n,
+        )
+
+        return dict(
+            high_m=high_m,
+            high_n=high_n,
+            low_m=low_m,
+            low_n=low_n,
+            high_source=high_source,
+            low_source=low_source,
+        )
 
     def compute_scoring_metrics(self, scoring_params):
         is_trending = bool(self.is_ma_trending[0])
@@ -444,7 +466,7 @@ class VipHLStrategy(bt.Strategy):
 
         if within_lookback_period:# what is lookback period?
             if has_long_signal or has_vvip_long_signal:
-                self.record_trade(0, scoring_metrics)
+                self.record_trade(0, scoring_params, scoring_metrics)
                 self.viphl.commit_latest_recovery_window(break_hl_at_price)
 
         self.manage_trade()
@@ -476,7 +498,7 @@ class VipHLStrategy(bt.Strategy):
 
         return new_trade
 
-    def record_trade(self, extend_bar_signal_offset, scoring_metrics):
+    def record_trade(self, extend_bar_signal_offset, scoring_params, scoring_metrics):
         combined_score = scoring_metrics['combined_score']
 
         if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
@@ -520,6 +542,10 @@ class VipHLStrategy(bt.Strategy):
                 "high_score": f"{scoring_metrics['high_score']:.3f}",
                 "low_score": f"{scoring_metrics['low_score']:.3f}",
                 "pnl_scale": f"{pnl_scale:.3f}",
+                "high_source": scoring_params.get("high_source"),
+                "low_source": scoring_params.get("low_source"),
+                "high_mn": f"({scoring_params['high_m']},{scoring_params['high_n']})",
+                "low_mn": f"({scoring_params['low_m']},{scoring_params['low_n']})",
                 "is_trending": bool(self.is_ma_trending[0]),
             },
         )
