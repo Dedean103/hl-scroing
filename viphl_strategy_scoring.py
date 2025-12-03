@@ -121,9 +121,10 @@ class VipHLStrategy(bt.Strategy):
         if not debug_path:
             return
 
-        timestamp = datetime.utcnow().date().isoformat()
+        current_bar_time = num2date(self.data.datetime[0]).date().isoformat()
+        details.setdefault("bar_time", current_bar_time)
         with debug_path.open("a", encoding="utf-8") as f:
-            f.write(f"### {timestamp} {title}\n")
+            f.write(f"### {title}\n")
             for key, value in details.items():
                 f.write(f"- **{key}**: {value}\n")
             f.write("\n")
@@ -512,6 +513,7 @@ class VipHLStrategy(bt.Strategy):
                 "current_bar": self.bar_index(),
                 "trade_id": trade_ref,
                 "entry_time": entry_timestamp,
+                "bar_time": entry_timestamp,
                 "entry_price": f"{self.data.close[0]:.2f}",
                 "entry_size": entry_size,
                 "combined_score": f"{combined_score:.3f}",
