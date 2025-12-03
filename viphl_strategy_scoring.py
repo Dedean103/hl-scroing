@@ -505,7 +505,7 @@ class VipHLStrategy(bt.Strategy):
         # Store the PnL scale for this trade
         trade_ref = id(self.trade_list[-1])
         self.trade_scales[trade_ref] = pnl_scale
-        entry_timestamp = num2date(self.data.datetime[0]).isoformat()
+        entry_timestamp = num2date(self.data.datetime[0]).date().isoformat()
         self._log_trade_event(
             "Trade entry",
             {
@@ -595,7 +595,7 @@ class VipHLStrategy(bt.Strategy):
                             "current_bar": self.bar_index(),
                             "trade_id": id(trade),
                             "reason": "take_profit_first_leg",
-                            "exit_time": num2date(self.data.datetime[0]).isoformat(),
+                            "exit_time": num2date(self.data.datetime[0]).date().isoformat(),
                             "exit_price": f"{self.data.close[0]:.2f}",
                             "return_pct": f"{cur_return:.2f}",
                             "closed_size": closed_size,
@@ -634,7 +634,7 @@ class VipHLStrategy(bt.Strategy):
                 "current_bar": self.bar_index(),
                 "trade_id": id(trade),
                 "reason": reason,
-                "exit_time": num2date(self.data.datetime[0]).isoformat(),
+                "exit_time": num2date(self.data.datetime[0]).date().isoformat(),
                 "exit_price": f"{self.data.close[0]:.2f}",
                 "return_pct": f"{cur_return:.2f}",
                 "closed_size": closed_size,
@@ -660,7 +660,7 @@ class VipHLStrategy(bt.Strategy):
                 "current_bar": self.bar_index(),
                 "trade_id": id(trade),
                 "reason": reason,
-                "exit_time": num2date(self.data.datetime[0]).isoformat(),
+                "exit_time": num2date(self.data.datetime[0]).date().isoformat(),
                 "exit_price": f"{self.data.close[0]:.2f}",
                 "return_pct": f"{cur_return:.2f}",
                 "closed_size": closed_size,

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime
+from datetime import datetime
 from pathlib import Path
 import sys
 from typing import Any, Dict, Iterable, Optional, Tuple
@@ -67,7 +68,7 @@ DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
     # Misc
     "mintick": 0.01,
     "debug_mode": True,
-    "debug_log_path": str(ROOT / "debug_trace.md"),
+    "debug_log_path": str(ROOT),
 }
 
 
@@ -144,10 +145,22 @@ def run_strategy_and_plot(
 
     strategy_args = dict(strategy_kwargs or DEFAULT_STRATEGY_CONFIG)
 
+    run_token = "{normal}_{trend}_{scoreflag}_{stamp}".format(
+        normal=strategy_args.get("mn_start_point_high", "na"),
+        trend=strategy_args.get("mn_start_point_high_trend", "na"),
+        scoreflag=1 if strategy_args.get("enable_hl_byp_scoring") else 0,
+        stamp=datetime.utcnow().strftime("%Y%m%d%H%M%S"),
+    )
+
     debug_log_path = strategy_args.get("debug_log_path")
     if debug_log_path:
-        resolved_log_path = Path(debug_log_path).expanduser().resolve()
-        resolved_log_path.parent.mkdir(parents=True, exist_ok=True)
+        base_path = Path(debug_log_path).expanduser().resolve()
+        if base_path.suffix:
+            directory = base_path.parent
+        else:
+            directory = base_path
+        directory.mkdir(parents=True, exist_ok=True)
+        resolved_log_path = directory / f"debug_trace_{run_token}.md"
         header = f"# VipHL Debug Trace — {datetime.utcnow().date().isoformat()}\n\n"
         resolved_log_path.write_text(header, encoding="utf-8")
         strategy_args["debug_log_path"] = str(resolved_log_path)
@@ -170,7 +183,7 @@ def run_strategy_and_plot(
     if save_plot:
         output_dir = output_dir or csv_file.parent
         output_dir.mkdir(parents=True, exist_ok=True)
-        save_filename = output_dir / f"{ticker}_viphl_trades.png"
+        save_filename = output_dir / f"{ticker}_viphl_trades_{run_token}.png"
 
     strategy_params = {
         "mn_start_point_high": strat.params.mn_start_point_high,
@@ -424,7 +437,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument("--disable-scoring", dest="enable_scoring", action="store_false", help="Disable HL-by-point scoring.")
     parser.set_defaults(enable_scoring=True)
     parser.add_argument("--bar-count-to-by-point", type=int, default=None, help="Override the draw-from-recent window size.")
-    parser.add_argument("--debug-log", default=str(ROOT / "debug_trace.md"), help="Path to append debug markdown output.")
+    parser.add_argument("--debug-log", default=str(ROOT), help="Directory or file path for debug markdown output.")
     parser.add_argument("--no-save", action="store_true", help="Skip saving the PNG output.")
     parser.add_argument("--no-show", action="store_true", help="Skip displaying the matplotlib window.")
     parser.add_argument(
