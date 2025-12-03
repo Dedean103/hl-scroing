@@ -10,6 +10,7 @@ understands the latest Settings/Strategy parameters.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 from pathlib import Path
 import sys
 from typing import Any, Dict, Iterable, Optional, Tuple
@@ -141,7 +142,16 @@ def run_strategy_and_plot(
     cerebro.adddata(pandas_data)
     cerebro.broker.set_coc(True)
 
-    strategy_args = strategy_kwargs or DEFAULT_STRATEGY_CONFIG
+    strategy_args = dict(strategy_kwargs or DEFAULT_STRATEGY_CONFIG)
+
+    debug_log_path = strategy_args.get("debug_log_path")
+    if debug_log_path:
+        resolved_log_path = Path(debug_log_path).expanduser().resolve()
+        resolved_log_path.parent.mkdir(parents=True, exist_ok=True)
+        header = f"# VipHL Debug Trace — {datetime.utcnow().date().isoformat()}\n\n"
+        resolved_log_path.write_text(header, encoding="utf-8")
+        strategy_args["debug_log_path"] = str(resolved_log_path)
+
     cerebro.addstrategy(VipHLStrategy, **strategy_args)
 
     print(f"Running VipHL strategy on {csv_file}...")

@@ -121,7 +121,7 @@ class VipHLStrategy(bt.Strategy):
         if not debug_path:
             return
 
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.utcnow().date().isoformat()
         with debug_path.open("a", encoding="utf-8") as f:
             f.write(f"### {timestamp} {title}\n")
             for key, value in details.items():
