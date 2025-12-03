@@ -55,17 +55,18 @@ DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
     "mn_start_point_low_trend": 10,
     "mn_cap_high_trend": 20,
     "mn_cap_low_trend": 20,
+    "bar_count_to_by_point": 800,
     # Scoring
     "max_mn_cap": 20,
     "power_scaling_factor": 1.5,
     "high_score_scaling_factor": 0.5,
     "low_score_scaling_factor": 0.5,
     "on_trend_ratio": 1.0,
+    "enable_hl_byp_scoring": False,
     # Misc
     "mintick": 0.01,
     "debug_mode": True,
     "debug_log_path": str(ROOT / "debug_trace.md"),
-    "enable_hl_byp_scoring": False,
 }
 
 
@@ -116,6 +117,10 @@ def build_strategy_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
     config["on_trend_ratio"] = args.on_trend_ratio
     if args.debug_log:
         config["debug_log_path"] = args.debug_log
+    if getattr(args, "enable_scoring", None) is not None:
+        config["enable_hl_byp_scoring"] = bool(args.enable_scoring)
+    if getattr(args, "bar_count_to_by_point", None) is not None:
+        config["bar_count_to_by_point"] = args.bar_count_to_by_point
 
     return config
 
@@ -405,6 +410,10 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument("--high-score-scaling-factor", type=float, default=0.5, help="Weight on high pivots.")
     parser.add_argument("--low-score-scaling-factor", type=float, default=0.5, help="Weight on low pivots.")
     parser.add_argument("--on-trend-ratio", type=float, default=1.0, help="Weight boost applied in trending mode.")
+    parser.add_argument("--enable-scoring", dest="enable_scoring", action="store_true", help="Enable HL-by-point scoring.")
+    parser.add_argument("--disable-scoring", dest="enable_scoring", action="store_false", help="Disable HL-by-point scoring.")
+    parser.set_defaults(enable_scoring=None)
+    parser.add_argument("--bar-count-to-by-point", type=int, default=None, help="Override the draw-from-recent window size.")
     parser.add_argument("--debug-log", default="", help="Path to append debug markdown output.")
     parser.add_argument("--no-save", action="store_true", help="Skip saving the PNG output.")
     parser.add_argument("--no-show", action="store_true", help="Skip displaying the matplotlib window.")

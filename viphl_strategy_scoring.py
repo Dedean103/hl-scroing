@@ -1,4 +1,6 @@
 import math
+from datetime import datetime
+from pathlib import Path
 import pandas as pd
 import backtrader as bt
 
@@ -58,7 +60,7 @@ class VipHLStrategy(bt.Strategy):
         ('low_score_scaling_factor', 1.0),   # Weight for low pivot contribution
 
         # HL Violation设置
-        ('bar_count_to_by_point', 800),
+        ('bar_count_to_by_point', 500),
         ('bar_cross_threshold', 5),
         ('hl_length_threshold', 300),
 
@@ -110,6 +112,21 @@ class VipHLStrategy(bt.Strategy):
         if doprint:
             dt = dt or self.datas[0].datetime.date(0)
             print('%s, %s' % (dt.isoformat(), txt))
+
+    def _log_trade_event(self, title, details):
+        if not self.p.debug_mode:
+            return
+
+        debug_path = getattr(self, "_debug_log_path", None)
+        if not debug_path:
+            return
+
+        timestamp = datetime.utcnow().isoformat()
+        with debug_path.open("a", encoding="utf-8") as f:
+            f.write(f"### {timestamp} {title}\n")
+            for key, value in details.items():
+                f.write(f"- **{key}**: {value}\n")
+            f.write("\n")
 
     def calculate_hl_byp_score(self, m, n, pivot_type='high', is_trending=False):
         '''Calculate normalized HL byP score (0-1) based on m,n parameters with power scaling'''
@@ -228,6 +245,12 @@ class VipHLStrategy(bt.Strategy):
             raise ValueError(f"high_score_scaling_factor must be positive, got {self.p.high_score_scaling_factor}")
         if self.p.low_score_scaling_factor <= 0:
             raise ValueError(f"low_score_scaling_factor must be positive, got {self.p.low_score_scaling_factor}")
+
+        self._debug_log_path = None
+        debug_path = (self.p.debug_log_path or "").strip()
+        if debug_path:
+            self._debug_log_path = Path(debug_path).expanduser().resolve()
+            self._debug_log_path.parent.mkdir(parents=True, exist_ok=True)
 
         '''
         viphl
@@ -480,7 +503,24 @@ class VipHLStrategy(bt.Strategy):
         )
 
         # Store the PnL scale for this trade
-        self.trade_scales[id(self.trade_list[-1])] = pnl_scale
+        trade_ref = id(self.trade_list[-1])
+        self.trade_scales[trade_ref] = pnl_scale
+        entry_timestamp = num2date(self.data.datetime[0]).isoformat()
+        self._log_trade_event(
+            "Trade entry",
+            {
+                "current_bar": self.bar_index(),
+                "trade_id": trade_ref,
+                "entry_time": entry_timestamp,
+                "entry_price": f"{self.data.close[0]:.2f}",
+                "entry_size": entry_size,
+                "combined_score": f"{combined_score:.3f}",
+                "high_score": f"{scoring_metrics['high_score']:.3f}",
+                "low_score": f"{scoring_metrics['low_score']:.3f}",
+                "pnl_scale": f"{pnl_scale:.3f}",
+                "is_trending": bool(self.is_ma_trending[0]),
+            },
+        )
 
     def manage_trade(self):
         self.cur_drawdown = 0.0
@@ -509,15 +549,16 @@ class VipHLStrategy(bt.Strategy):
                     trade.is_open = False
                     if self.p.toggle_pnl:
                         cur_return = (self.data.close[0] - cur_entry_price) / cur_entry_price * 100
+                        closed_size = trade.open_entry_size
                         if trade.take_profit:
                             trade.second_time = self.data.datetime[0]
                             if (trade.max_exit_price - cur_entry_price) / cur_entry_price * 100 > self.p.max_exit_ca_multiplier * self.close_average_percent:
                                 cur_return = (trade.max_exit_price - cur_entry_price) * self.p.stop_gain_pt / cur_entry_price
-                                self.exit_second_time(cur_entry_price, cur_return, trade)
+                                self.exit_second_time(cur_entry_price, cur_return, trade, reason="stop_loss_max_exit", closed_size=closed_size)
                             else:
-                                self.exit_second_time(cur_entry_price, cur_return, trade)
+                                self.exit_second_time(cur_entry_price, cur_return, trade, reason="stop_loss", closed_size=closed_size)
                         else:
-                            self.exit_first_time(cur_entry_price, cur_return, trade)
+                            self.exit_first_time(cur_entry_price, cur_return, trade, reason="stop_loss", closed_size=closed_size)
                     trade.open_entry_size = 0
 
                 # Reach 3M # why here? 3months?
@@ -525,40 +566,60 @@ class VipHLStrategy(bt.Strategy):
                     trade.is_open = False
                     cur_return = (trade.max_exit_price - cur_entry_price) / cur_entry_price * self.p.max_gain_pt
                     if self.p.toggle_pnl:
+                        closed_size = trade.open_entry_size
                         if trade.take_profit:
                             trade.second_time = self.data.datetime[0]
-                            self.exit_second_time(cur_entry_price, cur_return, trade)
+                            self.exit_second_time(cur_entry_price, cur_return, trade, reason="cycle_exit", closed_size=closed_size)
                         else:
-                            self.exit_first_time(cur_entry_price, cur_return, trade)
+                            self.exit_first_time(cur_entry_price, cur_return, trade, reason="cycle_exit", closed_size=closed_size)
                     trade.open_entry_size = 0
 
                 # Take profit
                 elif cur_max_return > max(self.p.first_gain_ca_multiplier * self.close_average_percent, self.p.stop_loss_pt) and not trade.take_profit and self.data.datetime[0] > trade.entry_time:
+                    cur_return = max(self.p.first_gain_ca_multiplier * self.close_average_percent, self.p.stop_loss_pt)
+                    closed_size = max(1, int(trade.total_entry_size * 0.33))
                     if self.p.toggle_pnl:
-                        cur_return = max(self.p.first_gain_ca_multiplier * self.close_average_percent, self.p.stop_loss_pt)
                         trade.first_time = self.data.datetime[0]
                         trade.first_return = cur_return
-                        self.current_equity += (1 + cur_return / 100) * cur_entry_price * int(trade.total_entry_size * 0.33)
+                        self.current_equity += (1 + cur_return / 100) * cur_entry_price * closed_size
                         self.max_equity = max(self.max_equity, self.current_equity)
                         # Apply PnL scale to partial exit
                         scale = self.trade_scales.get(id(trade), 1.0)
                         self.total_pnl += cur_return / 3 * scale
                         trade.pnl += cur_return / 3 * scale
                     trade.take_profit = True # take ptofit meaning second time?
-                    trade.open_entry_size -= int(trade.total_entry_size * 0.33)
+                    trade.open_entry_size = max(trade.open_entry_size - closed_size, 0)
+                    self._log_trade_event(
+                        "Trade partial exit",
+                        {
+                            "current_bar": self.bar_index(),
+                            "trade_id": id(trade),
+                            "reason": "take_profit_first_leg",
+                            "exit_time": num2date(self.data.datetime[0]).isoformat(),
+                            "exit_price": f"{self.data.close[0]:.2f}",
+                            "return_pct": f"{cur_return:.2f}",
+                            "closed_size": closed_size,
+                            "remaining_size": trade.open_entry_size,
+                        },
+                    )
 
                 elif self.bar_index() == self.last_bar_index():
                     cur_return = (trade.max_exit_price - cur_entry_price) / cur_entry_price * self.p.max_gain_pt
                     if self.p.toggle_pnl:
+                        closed_size = trade.open_entry_size
                         if trade.take_profit:
-                            self.exit_second_time(cur_entry_price, cur_return, trade)
+                            self.exit_second_time(cur_entry_price, cur_return, trade, reason="end_of_data_second_leg", closed_size=closed_size)
                         else:
-                            self.exit_first_time(cur_entry_price, cur_return, trade)
+                            self.exit_first_time(cur_entry_price, cur_return, trade, reason="end_of_data", closed_size=closed_size)
                     trade.open_entry_size = 0
 
         return self.cur_drawdown, self.max_equity, self.total_pnl
 
-    def exit_first_time(self, cur_entry_price, cur_return, trade):
+    def exit_first_time(self, cur_entry_price, cur_return, trade, reason="take_profit", closed_size=None):
+        pre_size = trade.open_entry_size
+        if closed_size is None:
+            closed_size = pre_size
+        remaining_size = max(pre_size - closed_size, 0)
         trade.first_time = self.data.datetime[0]
         trade.first_return = cur_return
         self.current_equity += (1 + cur_return / 100) * cur_entry_price * trade.open_entry_size
@@ -567,9 +628,25 @@ class VipHLStrategy(bt.Strategy):
         scale = self.trade_scales.get(id(trade), 1.0)
         self.total_pnl += cur_return * scale
         trade.pnl += cur_return * scale
+        self._log_trade_event(
+            "Trade exit (first leg)",
+            {
+                "current_bar": self.bar_index(),
+                "trade_id": id(trade),
+                "reason": reason,
+                "exit_time": num2date(self.data.datetime[0]).isoformat(),
+                "exit_price": f"{self.data.close[0]:.2f}",
+                "return_pct": f"{cur_return:.2f}",
+                "closed_size": closed_size,
+                "remaining_size": remaining_size,
+            },
+        )
 
     # why second time?
-    def exit_second_time(self, cur_entry_price, cur_return, trade):
+    def exit_second_time(self, cur_entry_price, cur_return, trade, reason="take_profit_second", closed_size=None):
+        pre_size = trade.open_entry_size
+        if closed_size is None:
+            closed_size = pre_size
         trade.second_return = cur_return
         self.current_equity += (1 + cur_return / 100) * cur_entry_price * trade.open_entry_size
         self.max_equity = max(self.max_equity, self.current_equity)
@@ -577,6 +654,19 @@ class VipHLStrategy(bt.Strategy):
         scale = self.trade_scales.get(id(trade), 1.0)
         self.total_pnl += cur_return * 2 / 3 * scale
         trade.pnl += cur_return * 2 / 3 * scale
+        self._log_trade_event(
+            "Trade exit (second leg)",
+            {
+                "current_bar": self.bar_index(),
+                "trade_id": id(trade),
+                "reason": reason,
+                "exit_time": num2date(self.data.datetime[0]).isoformat(),
+                "exit_price": f"{self.data.close[0]:.2f}",
+                "return_pct": f"{cur_return:.2f}",
+                "closed_size": closed_size,
+                "remaining_size": max(pre_size - closed_size, 0),
+            },
+        )
 
     def stop(self):
         self.export_hl_for_plotting()
