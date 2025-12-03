@@ -145,10 +145,11 @@ def run_strategy_and_plot(
 
     strategy_args = dict(strategy_kwargs or DEFAULT_STRATEGY_CONFIG)
 
-    run_token = "{normal}_{trend}_{scoreflag}_{stamp}".format(
+    run_token = "{normal}_{trend}_{scoreflag}_bar{bar_count}_{stamp}".format(
         normal=strategy_args.get("mn_start_point_high", "na"),
         trend=strategy_args.get("mn_start_point_high_trend", "na"),
         scoreflag=1 if strategy_args.get("enable_hl_byp_scoring") else 0,
+        bar_count=strategy_args.get("bar_count_to_by_point", "na"),
         stamp=datetime.utcnow().strftime("%Y%m%d%H%M%S"),
     )
 
@@ -439,7 +440,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument("--bar-count-to-by-point", type=int, default=None, help="Override the draw-from-recent window size.")
     parser.add_argument("--debug-log", default=str(ROOT), help="Directory or file path for debug markdown output.")
     parser.add_argument("--no-save", action="store_true", help="Skip saving the PNG output.")
-    parser.add_argument("--no-show", action="store_true", help="Skip displaying the matplotlib window.")
+    parser.add_argument("--show-plot", action="store_true", help="Show the matplotlib window after generation.")
     parser.add_argument(
         "--output-dir",
         default=None,
@@ -457,7 +458,7 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
     run_strategy_and_plot(
         csv_file=csv_path,
         save_plot=not args.no_save,
-        show_plot=not args.no_show,
+        show_plot=args.show_plot,
         output_dir=output_dir,
         strategy_kwargs=strategy_kwargs,
     )
