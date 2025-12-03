@@ -130,7 +130,7 @@ def build_strategy_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
 def run_strategy_and_plot(
     csv_file: Path,
     save_plot: bool = True,
-    show_plot: bool = True,
+    show_plot: bool = False,
     output_dir: Optional[Path] = None,
     strategy_kwargs: Optional[Dict[str, Any]] = None,
 ) -> Tuple[VipHLStrategy, bt.Cerebro]:
