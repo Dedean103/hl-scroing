@@ -26,6 +26,9 @@ from matplotlib.lines import Line2D
 ROOT = Path(__file__).resolve().parent
 REPO_ROOT = ROOT.parent
 
+RESULTS_ROOT = ROOT / "results"
+RESULTS_ROOT.mkdir(parents=True, exist_ok=True)
+
 VIPHL_REPO = REPO_ROOT / "viphl-source-code"
 VIPHL_INDICATORS = VIPHL_REPO / "indicators"
 
@@ -57,7 +60,7 @@ DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
     "mn_start_point_low_trend": 10,
     "mn_cap_high_trend": 20,
     "mn_cap_low_trend": 20,
-    "bar_count_to_by_point": 800,
+    "bar_count_to_by_point": 1000,
     # Scoring
     "max_mn_cap": 20,
     "power_scaling_factor": 1.5,
@@ -68,7 +71,8 @@ DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
     # Misc
     "mintick": 0.01,
     "debug_mode": True,
-    "debug_log_path": str(ROOT),
+    "debug_log_path": str(RESULTS_ROOT),
+    "lookback": 1000,
 }
 
 
@@ -89,6 +93,7 @@ def build_strategy_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
     """Merge CLI overrides into the default strategy configuration."""
     config = dict(DEFAULT_STRATEGY_CONFIG)
     config["mintick"] = args.mintick
+    config["lookback"] = args.lookback
 
     config["mn_start_point_high"] = args.mn_start_normal
     config["mn_start_point_low"] = args.mn_start_normal
@@ -121,8 +126,11 @@ def build_strategy_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
         config["debug_log_path"] = args.debug_log
     if getattr(args, "enable_scoring", None) is not None:
         config["enable_hl_byp_scoring"] = bool(args.enable_scoring)
-    if getattr(args, "bar_count_to_by_point", None) is not None:
-        config["bar_count_to_by_point"] = args.bar_count_to_by_point
+    config["bar_count_to_by_point"] = args.bar_count_to_by_point
+    if args.start_date:
+        config["plot_start_date"] = args.start_date
+    if args.end_date:
+        config["plot_end_date"] = args.end_date
 
     return config
 
@@ -144,6 +152,8 @@ def run_strategy_and_plot(
     cerebro.broker.set_coc(True)
 
     strategy_args = dict(strategy_kwargs or DEFAULT_STRATEGY_CONFIG)
+    plot_start = strategy_args.pop("plot_start_date", None)
+    plot_end = strategy_args.pop("plot_end_date", None)
 
     run_token = "{normal}_{trend}_{scoreflag}_bar{bar_count}_{stamp}".format(
         normal=strategy_args.get("mn_start_point_high", "na"),
@@ -153,7 +163,18 @@ def run_strategy_and_plot(
         stamp=datetime.utcnow().strftime("%Y%m%d%H%M%S"),
     )
 
+    base_output_root = output_dir if output_dir else RESULTS_ROOT
+    output_root = base_output_root / run_token
+    output_root.mkdir(parents=True, exist_ok=True)
+
     debug_log_path = strategy_args.get("debug_log_path")
+    try:
+        debug_log_root = Path(debug_log_path).expanduser().resolve() if debug_log_path else None
+    except OSError:
+        debug_log_root = None
+    if debug_log_root is None or debug_log_root == RESULTS_ROOT.resolve():
+        strategy_args["debug_log_path"] = str(output_root)
+        debug_log_path = strategy_args["debug_log_path"]
     if debug_log_path:
         base_path = Path(debug_log_path).expanduser().resolve()
         if base_path.suffix:
@@ -180,11 +201,8 @@ def run_strategy_and_plot(
     ticker = csv_file.stem.upper()
     title = f"{ticker} VipHL Strategy — Dynamic (m, n) Results"
     save_filename = None
-
     if save_plot:
-        output_dir = output_dir or csv_file.parent
-        output_dir.mkdir(parents=True, exist_ok=True)
-        save_filename = output_dir / f"{ticker}_viphl_trades_{run_token}.png"
+        save_filename = output_root / f"{ticker}_viphl_trades_{run_token}.png"
 
     strategy_params = {
         "mn_start_point_high": strat.params.mn_start_point_high,
@@ -203,7 +221,7 @@ def run_strategy_and_plot(
         "debug_log_path": strat.params.debug_log_path,
     }
 
-    plot_trade_results(
+    price_fig, _ = plot_trade_results(
         dataframe=dataframe,
         trade_list=strat.trade_list,
         lines_info=strat.lines_info,
@@ -212,6 +230,37 @@ def run_strategy_and_plot(
         save_filename=save_filename,
         strategy_params=strategy_params,
         show_plot=show_plot,
+        plot_start_date=plot_start,
+        plot_end_date=plot_end,
+    )
+
+    pnl_history = getattr(strat, "pnl_history", [])
+    pnl_plot_filename = None
+    if save_plot:
+        output_root.mkdir(parents=True, exist_ok=True)
+        pnl_plot_filename = output_root / f"{ticker}_viphl_pnl_{run_token}.png"
+    if pnl_history:
+        plot_cumulative_pnl(
+            pnl_history=pnl_history,
+            title=f"{ticker} Cumulative PnL — Dynamic (m, n) Results",
+            save_filename=pnl_plot_filename,
+            show_plot=show_plot,
+        )
+    else:
+        print("No PnL history available to plot cumulative curve.")
+
+    export_trade_log(
+        trade_list=strat.trade_list,
+        output_dir=output_root,
+        ticker=ticker,
+        run_token=run_token,
+    )
+    export_daily_equity_summary(
+        strategy=strat,
+        price_index=dataframe.index,
+        output_dir=output_root,
+        ticker=ticker,
+        run_token=run_token,
     )
 
     return strat, cerebro
@@ -226,13 +275,31 @@ def plot_trade_results(
     save_filename: Optional[Path] = None,
     strategy_params: Optional[Dict[str, Any]] = None,
     show_plot: bool = True,
+    plot_start_date: Optional[str] = None,
+    plot_end_date: Optional[str] = None,
 ):
     """Render VipHL trades, HL lines, and strategy statistics."""
     plt.style.use("default")
     fig, ax = plt.subplots(figsize=(20, 10))
 
-    x_axis = dataframe.index.to_numpy()
-    close_values = dataframe["close"].to_numpy()
+    filtered_df = dataframe.copy()
+    if plot_start_date:
+        start_dt = pd.to_datetime(plot_start_date)
+        filtered_df = filtered_df[filtered_df.index >= start_dt]
+    else:
+        start_dt = filtered_df.index.min()
+    if plot_end_date:
+        end_dt = pd.to_datetime(plot_end_date)
+        filtered_df = filtered_df[filtered_df.index <= end_dt]
+    else:
+        end_dt = filtered_df.index.max()
+    if filtered_df.empty:
+        filtered_df = dataframe
+        start_dt = filtered_df.index.min()
+        end_dt = filtered_df.index.max()
+
+    x_axis = filtered_df.index.to_numpy()
+    close_values = filtered_df["close"].to_numpy()
 
     ax.plot(
         x_axis,
@@ -259,8 +326,8 @@ def plot_trade_results(
             )
         ax.plot([], [], color="purple", linestyle="--", linewidth=1.5, alpha=0.4, label="VipHL Lines")
 
-    price_min = dataframe["close"].min()
-    price_max = dataframe["close"].max()
+    price_min = filtered_df["close"].min()
+    price_max = filtered_df["close"].max()
     price_range = price_max - price_min
 
     base_entry_size = min((trade.total_entry_size for trade in trade_list if trade.total_entry_size > 0), default=1)
@@ -269,6 +336,8 @@ def plot_trade_results(
 
     for trade in trade_list:
         entry_date = num2date(trade.entry_time)
+        if entry_date < start_dt or entry_date > end_dt:
+            continue
         entry_price = trade.entry_price
         scale = max(1.0, trade.total_entry_size / base_entry_size)
         pnl = trade.pnl
@@ -294,6 +363,8 @@ def plot_trade_results(
 
         if trade.first_time > 0:
             first_exit_date = num2date(trade.first_time)
+            if first_exit_date < start_dt or first_exit_date > end_dt:
+                continue
             first_exit_price = entry_price * (1 + trade.first_return / 100)
             ax.scatter(
                 first_exit_date,
@@ -318,6 +389,8 @@ def plot_trade_results(
 
         if trade.take_profit and trade.second_time > 0:
             second_exit_date = num2date(trade.second_time)
+            if second_exit_date < start_dt or second_exit_date > end_dt:
+                continue
             second_exit_price = entry_price * (1 + trade.second_return / 100)
             ax.scatter(
                 second_exit_date,
@@ -401,6 +474,7 @@ def plot_trade_results(
     ax.set_xlabel("Date", fontsize=14, fontweight="bold")
     ax.set_ylabel("Price", fontsize=14, fontweight="bold")
     ax.grid(True, alpha=0.3, linestyle="--")
+    ax.set_xlim(start_dt, end_dt)
     ax.set_ylim(price_min - price_range * 0.05, price_max + price_range * 0.1)
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha="right")
     plt.tight_layout()
@@ -419,16 +493,197 @@ def plot_trade_results(
     return fig, ax
 
 
+def plot_cumulative_pnl(
+    pnl_history,
+    title: str,
+    save_filename: Optional[Path] = None,
+    show_plot: bool = True,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
+    """Plot cumulative PnL percentage over time."""
+    if not pnl_history:
+        return None
+
+    history = sorted(pnl_history, key=lambda point: point[0])
+    start_dt = pd.to_datetime(start_date) if start_date else None
+    end_dt = pd.to_datetime(end_date) if end_date else None
+    if start_dt is not None:
+        history = [point for point in history if point[0] >= start_dt]
+    if end_dt is not None:
+        history = [point for point in history if point[0] <= end_dt]
+    if not history:
+        history = sorted(pnl_history, key=lambda point: point[0])
+        start_dt = start_dt or history[0][0]
+        end_dt = end_dt or history[-1][0]
+    else:
+        if start_dt is None:
+            start_dt = history[0][0]
+        if end_dt is None:
+            end_dt = history[-1][0]
+
+    dates = [point[0] for point in history]
+    pnl_values = [point[1] for point in history]
+
+    fig, ax = plt.subplots(figsize=(16, 6))
+    ax.plot(dates, pnl_values, color="teal", linewidth=2.5, label="Cumulative PnL (%)")
+    ax.fill_between(dates, pnl_values, color="teal", alpha=0.1)
+    ax.axhline(0, color="gray", linewidth=1, linestyle="--", alpha=0.6)
+
+    if pnl_values:
+        ax.annotate(
+            f"{pnl_values[-1]:.2f}%",
+            xy=(dates[-1], pnl_values[-1]),
+            xytext=(10, 0),
+            textcoords="offset points",
+            fontsize=12,
+            fontweight="bold",
+            color="teal",
+        )
+
+    ax.set_xlim(start_dt, end_dt)
+    ax.set_title(title, fontsize=16, fontweight="bold")
+    ax.set_xlabel("Date", fontsize=13)
+    ax.set_ylabel("Cumulative PnL (%)", fontsize=13)
+    ax.grid(True, linestyle="--", alpha=0.3)
+    ax.legend(loc="upper left")
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=30, ha="right")
+    plt.tight_layout()
+
+    if save_filename:
+        save_path = Path(save_filename)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+        print(f"Cumulative PnL plot saved to {save_path}")
+
+    if show_plot:
+        plt.show()
+    else:
+        plt.close(fig)
+
+    return fig, ax
+
+
+def export_trade_log(
+    trade_list,
+    output_dir: Optional[Path],
+    ticker: str,
+    run_token: str,
+):
+    """Write a CSV summarizing trade entry/exit timestamps and PnL."""
+    if not trade_list:
+        return None
+
+    rows = []
+    for idx, trade in enumerate(trade_list, start=1):
+        entry_dt = num2date(trade.entry_time)
+        first_exit_dt = num2date(trade.first_time) if trade.first_time else None
+        second_exit_dt = num2date(trade.second_time) if trade.second_time else None
+        rows.append(
+            {
+                "No.": idx,
+                "Entry Time": entry_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "First Exit Time": first_exit_dt.strftime("%Y-%m-%d %H:%M:%S") if first_exit_dt else "",
+                "Second Exit Time": second_exit_dt.strftime("%Y-%m-%d %H:%M:%S") if second_exit_dt else "",
+                "Weighted PnL%": round(trade.pnl, 4),
+                "Combined Score": round(getattr(trade, "combined_score", 0.0), 4),
+                "Signal Type": "Trending" if getattr(trade, "is_trending_trade", False) else "Normal",
+                "High (m,n)": f"({getattr(trade, 'high_m', 0):.2f}, {getattr(trade, 'high_n', 0):.2f})",
+                "Low (m,n)": f"({getattr(trade, 'low_m', 0):.2f}, {getattr(trade, 'low_n', 0):.2f})",
+            }
+        )
+
+    df = pd.DataFrame(rows)
+    target_dir = output_dir or Path(".")
+    target_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = target_dir / f"{ticker}_viphl_trade_log_{run_token}.csv"
+    df.to_csv(csv_path, index=False)
+    print(f"Trade log saved to {csv_path}")
+    return csv_path
+
+
+def export_daily_equity_summary(
+    strategy: VipHLStrategy,
+    price_index: pd.DatetimeIndex,
+    output_dir: Optional[Path],
+    ticker: str,
+    run_token: str,
+):
+    """Export a CSV with per-day PnL and total open position size."""
+    if price_index is None or len(price_index) == 0:
+        return None
+
+    date_index = pd.DatetimeIndex(price_index)
+    day_end_times = date_index.to_series().groupby(date_index.normalize()).max()
+    if day_end_times.empty:
+        return None
+
+    first_timestamp = day_end_times.iloc[0]
+    pnl_series = _history_to_series(
+        history=getattr(strategy, "pnl_history", []),
+        default_timestamp=first_timestamp,
+        default_value=0.0,
+    )
+    position_series = _history_to_series(
+        history=getattr(strategy, "position_history", []),
+        default_timestamp=first_timestamp,
+        default_value=0,
+    )
+
+    target_index = pd.Index(day_end_times.values, name="day_end")
+    pnl_values = pnl_series.reindex(target_index, method="ffill")
+    position_values = position_series.reindex(target_index, method="ffill")
+    pnl_values = pnl_values.ffill().fillna(0.0)
+    position_values = position_values.ffill().fillna(0).abs()
+
+    summary_frame = pd.DataFrame(
+        {
+            "Date": [ts.date().isoformat() for ts in day_end_times.index],
+            "Day End PnL%": pnl_values.to_numpy(dtype=float),
+            "Total Position Size": position_values.astype(int).to_numpy(),
+        }
+    )
+
+    target_dir = output_dir or Path(".")
+    target_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = target_dir / f"{ticker}_viphl_daily_summary_{run_token}.csv"
+    summary_frame.to_csv(csv_path, index=False)
+    print(f"Daily equity summary saved to {csv_path}")
+    return csv_path
+
+
+def _history_to_series(history, default_timestamp, default_value):
+    """Convert (datetime, value) pairs into a sorted Series with a default seed."""
+    default_ts = pd.to_datetime(default_timestamp)
+    cleaned_records = []
+    for point in history or []:
+        if not point:
+            continue
+        timestamp, value = point
+        if timestamp is None:
+            continue
+        cleaned_records.append((pd.to_datetime(timestamp), value))
+    cleaned_records.sort(key=lambda item: item[0])
+    if not cleaned_records or cleaned_records[0][0] > default_ts:
+        cleaned_records.insert(0, (default_ts, default_value))
+    df = pd.DataFrame(cleaned_records, columns=["timestamp", "value"])
+    df.sort_values("timestamp", inplace=True)
+    df = df.drop_duplicates(subset="timestamp", keep="last")
+    return pd.Series(df["value"].to_numpy(), index=df["timestamp"])
+
+
 def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
+    pmt = 4
+    cap = 20
     parser = argparse.ArgumentParser(
         description="Run VipHLStrategy with dynamic (m, n) sizing and plot the resulting trades.",
     )
     parser.add_argument("--csv", default="BTC.csv", help="Path to the OHLCV CSV (default: %(default)s).")
     parser.add_argument("--mintick", type=float, default=0.01, help="Minimum tick size passed to the strategy.")
-    parser.add_argument("--mn-start-normal", type=int, default=4, help="Starting m/n window for normal pivots.")
-    parser.add_argument("--mn-cap-normal", type=int, default=20, help="Maximum m/n window for normal pivots.")
-    parser.add_argument("--mn-start-trend", type=int, default=4, help="Starting m/n window for trending pivots.")
-    parser.add_argument("--mn-cap-trend", type=int, default=20, help="Maximum m/n window for trending pivots.")
+    parser.add_argument("--mn-start-normal", type=int, default=pmt, help="Starting m/n window for normal pivots.")
+    parser.add_argument("--mn-cap-normal", type=int, default=cap, help="Maximum m/n window for normal pivots.")
+    parser.add_argument("--mn-start-trend", type=int, default=pmt, help="Starting m/n window for trending pivots.")
+    parser.add_argument("--mn-cap-trend", type=int, default=cap, help="Maximum m/n window for trending pivots.")
     parser.add_argument("--static-window", type=int, default=0, help="Optional override for static fallback windows.")
     parser.add_argument("--power-scaling-factor", type=float, default=1.5, help="k exponent for HL scoring.")
     parser.add_argument("--high-score-scaling-factor", type=float, default=0.5, help="Weight on high pivots.")
@@ -437,10 +692,18 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument("--enable-scoring", dest="enable_scoring", action="store_true", help="Enable HL-by-point scoring.")
     parser.add_argument("--disable-scoring", dest="enable_scoring", action="store_false", help="Disable HL-by-point scoring.")
     parser.set_defaults(enable_scoring=True)
-    parser.add_argument("--bar-count-to-by-point", type=int, default=None, help="Override the draw-from-recent window size.")
-    parser.add_argument("--debug-log", default=str(ROOT), help="Directory or file path for debug markdown output.")
+    parser.add_argument(
+        "--bar-count-to-by-point",
+        type=int,
+        default=DEFAULT_STRATEGY_CONFIG["bar_count_to_by_point"],
+        help="Override the draw-from-recent window size.",
+    )
+    parser.add_argument("--debug-log", default=str(RESULTS_ROOT), help="Directory or file path for debug markdown output.")
+    parser.add_argument("--lookback", type=int, default=DEFAULT_STRATEGY_CONFIG["lookback"], help="Bars from the end that remain eligible for new trades.")
     parser.add_argument("--no-save", action="store_true", help="Skip saving the PNG output.")
     parser.add_argument("--show-plot", action="store_true", help="Show the matplotlib window after generation.")
+    parser.add_argument("--start-date", type=str, default='2023-01-01', help="Optional inclusive start date for plotting (YYYY-MM-DD).")
+    parser.add_argument("--end-date", type=str, default='2023-10-01', help="Optional inclusive end date for plotting (YYYY-MM-DD).")
     parser.add_argument(
         "--output-dir",
         default=None,

@@ -21,3 +21,9 @@ class TradeV2:
     second_time: int = 0
     second_return: float = 0.0
     stop_loss_percent: float = 0.0
+    combined_score: float = 0.0
+    high_m: float = 0.0
+    high_n: float = 0.0
+    low_m: float = 0.0
+    low_n: float = 0.0
+    is_trending_trade: bool = False

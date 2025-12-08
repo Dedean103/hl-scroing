@@ -1,0 +1,18 @@
+  Phase 1: Add current_bar to all existing logs
+  - Update _log_debug_markdown calls to include current_bar: self.bar_index
+  - Quick win, provides immediate context
+
+  Phase 2: Instrument PivotHigh/PivotLow indicators
+  - Add logging to track the live candidate pivots dictionary
+  - Log when candidates are added, expanded, confirmed, or rejected
+  - This shows the dynamic m/n detection process
+
+  Phase 3: Instrument HL construction
+  - Add detailed logging in rebuild_hl_from_most_recent_by_point
+  - Log each merge decision with the actual values being compared
+  - Log extension process in extend_hl_to_first_cross_from_history
+
+  Phase 4: Add HL lifecycle tracking
+  - Log when HLs are invalidated (too many violations)
+  - Log recovery window creation/updates
+  - Log trade signal generation tied to specific HLs

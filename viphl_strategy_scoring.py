@@ -1,6 +1,7 @@
 import math
 from datetime import datetime
 from pathlib import Path
+from typing import List, Tuple
 import pandas as pd
 import backtrader as bt
 
@@ -60,7 +61,7 @@ class VipHLStrategy(bt.Strategy):
         ('low_score_scaling_factor', 1.0),   # Weight for low pivot contribution
 
         # HL Violation设置
-        ('bar_count_to_by_point', 500),
+        ('bar_count_to_by_point', 300),
         ('bar_cross_threshold', 5),
         ('hl_length_threshold', 300),
 
@@ -128,6 +129,21 @@ class VipHLStrategy(bt.Strategy):
             for key, value in details.items():
                 f.write(f"- **{key}**: {value}\n")
             f.write("\n")
+
+    def _record_pnl_snapshot(self, event_time=None):
+        if event_time is None and hasattr(self, "data") and len(self.data) > 0:
+            event_time = num2date(self.data.datetime[0])
+        if event_time is None:
+            event_time = datetime.utcnow()
+        self.pnl_history.append((event_time, self.total_pnl))
+
+    def _record_position_snapshot(self, event_time=None):
+        if event_time is None and hasattr(self, "data") and len(self.data) > 0:
+            event_time = num2date(self.data.datetime[0])
+        if event_time is None:
+            event_time = datetime.utcnow()
+        total_open_size = sum(abs(trade.open_entry_size) for trade in self.trade_list)
+        self.position_history.append((event_time, total_open_size))
 
     def calculate_hl_byp_score(self, m, n, pivot_type='high', is_trending=False):
         '''Calculate normalized HL byP score (0-1) based on m,n parameters with power scaling'''
@@ -200,6 +216,7 @@ class VipHLStrategy(bt.Strategy):
             low_n=low_n,
             high_source=high_source,
             low_source=low_source,
+            is_trending=is_trending,
         )
 
     def compute_scoring_metrics(self, scoring_params):
@@ -274,6 +291,8 @@ class VipHLStrategy(bt.Strategy):
         if debug_path:
             self._debug_log_path = Path(debug_path).expanduser().resolve()
             self._debug_log_path.parent.mkdir(parents=True, exist_ok=True)
+        self.pnl_history: List[Tuple[datetime, float]] = []
+        self.position_history: List[Tuple[datetime, int]] = []
 
         '''
         viphl
@@ -447,7 +466,7 @@ class VipHLStrategy(bt.Strategy):
 
         scoring_params = self.build_scoring_params(flattern)
         scoring_metrics = self.compute_scoring_metrics(scoring_params)
-        quoted_trade = self.quote_trade(scoring_metrics)
+        quoted_trade = self.quote_trade(scoring_params, scoring_metrics)
 
         stoploss_below_threshold = quoted_trade.stop_loss_percent < self.close_average_percent[0] * self.p.reduce_stop_loss_threshold
         vviphl_stoploss_below_threshold = quoted_trade.stop_loss_percent < self.close_average_percent[0] * self.p.vviphl_reduce_stop_loss_threshold
@@ -470,8 +489,9 @@ class VipHLStrategy(bt.Strategy):
                 self.viphl.commit_latest_recovery_window(break_hl_at_price)
 
         self.manage_trade()
+        self._record_position_snapshot()
 
-    def quote_trade(self, scoring_metrics):
+    def quote_trade(self, scoring_params, scoring_metrics):
         stop_loss_percent = self.calculate_stop_loss_percent()
 
         if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
@@ -493,7 +513,12 @@ class VipHLStrategy(bt.Strategy):
             is_long=True,
             is_open=True,
             max_exit_price=self.data.high[0],
-            stop_loss_percent=stop_loss_percent
+            stop_loss_percent=stop_loss_percent,
+            combined_score=scoring_metrics["combined_score"],
+            high_m=scoring_params["high_m"],
+            high_n=scoring_params["high_n"],
+            low_m=scoring_params["low_m"],
+            low_n=scoring_params["low_n"],
         )
 
         return new_trade
@@ -510,6 +535,7 @@ class VipHLStrategy(bt.Strategy):
 
         base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])
         entry_size = max(1, math.floor(base_entry_size * combined_score))
+        is_trending_signal = scoring_params.get("is_trending", bool(self.is_ma_trending[0]))
 
         self.trade_list.append(
             TradeV2(
@@ -521,7 +547,13 @@ class VipHLStrategy(bt.Strategy):
                 total_entry_size=entry_size,
                 is_long=True,
                 is_open=True,
-                max_exit_price=self.data.high[0]
+                is_trending_trade=is_trending_signal,
+                max_exit_price=self.data.high[0],
+                combined_score=combined_score,
+                high_m=scoring_params["high_m"],
+                high_n=scoring_params["high_n"],
+                low_m=scoring_params["low_m"],
+                low_n=scoring_params["low_n"],
             )
         )
 
@@ -615,6 +647,7 @@ class VipHLStrategy(bt.Strategy):
                         scale = self.trade_scales.get(id(trade), 1.0)
                         self.total_pnl += cur_return / 3 * scale
                         trade.pnl += cur_return / 3 * scale
+                        self._record_pnl_snapshot()
                     trade.take_profit = True # take ptofit meaning second time?
                     trade.open_entry_size = max(trade.open_entry_size - closed_size, 0)
                     self._log_trade_event(
@@ -656,6 +689,7 @@ class VipHLStrategy(bt.Strategy):
         scale = self.trade_scales.get(id(trade), 1.0)
         self.total_pnl += cur_return * scale
         trade.pnl += cur_return * scale
+        self._record_pnl_snapshot()
         self._log_trade_event(
             "Trade exit (first leg)",
             {
@@ -682,6 +716,7 @@ class VipHLStrategy(bt.Strategy):
         scale = self.trade_scales.get(id(trade), 1.0)
         self.total_pnl += cur_return * 2 / 3 * scale
         trade.pnl += cur_return * 2 / 3 * scale
+        self._record_pnl_snapshot()
         self._log_trade_event(
             "Trade exit (second leg)",
             {
