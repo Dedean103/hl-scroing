@@ -96,7 +96,8 @@ class VipHLStrategy(bt.Strategy):
         ('use_date_range', False),
 
         # ---------trade inputs-------
-        ('order_size_in_usd', 2000000),  # Equivalent to orderSizeInUSD
+        ('starting_fund', 2000000),
+        ('min_entry_size_denominator', 100.0),
         ('cycle_month', 6.0),  # Equivalent to cycleMonth
         ('stop_loss_pt', 1.0),  # Equivalent to stopLossPt
         ('first_gain_ca_multiplier', 2.0),  # Equivalent to firstGainCAMultiplier # what is this ,leverage?
@@ -144,6 +145,26 @@ class VipHLStrategy(bt.Strategy):
             event_time = datetime.utcnow()
         total_open_size = sum(abs(trade.open_entry_size) for trade in self.trade_list)
         self.position_history.append((event_time, total_open_size))
+
+    def _compute_unrealized_value(self):
+        if not hasattr(self, "data") or len(self.data) == 0:
+            return 0.0
+        current_price = float(self.data.close[0])
+        if current_price <= 0:
+            return 0.0
+        total_value = 0.0
+        for trade in self.trade_list:
+            if trade.is_open and trade.open_entry_size > 0:
+                total_value += trade.open_entry_size * current_price
+        return total_value
+
+    def _record_fund_snapshot(self, event_time=None):
+        if event_time is None and hasattr(self, "data") and len(self.data) > 0:
+            event_time = num2date(self.data.datetime[0])
+        if event_time is None:
+            event_time = datetime.utcnow()
+        equity = self.cash_balance + self._compute_unrealized_value()
+        self.remaining_fund_history.append((event_time, equity))
 
     def calculate_hl_byp_score(self, m, n, pivot_type='high', is_trending=False):
         '''Calculate normalized HL byP score (0-1) based on m,n parameters with power scaling'''
@@ -277,6 +298,29 @@ class VipHLStrategy(bt.Strategy):
 
         return scale
 
+    def _determine_entry_allocation(self, combined_score, reserve_cash=False):
+        if not hasattr(self, "data") or len(self.data) == 0:
+            return 0, 0.0, self.calculate_pnl_scale(combined_score)
+        current_price = float(self.data.close[0])
+        if current_price <= 0:
+            return 0, 0.0, self.calculate_pnl_scale(combined_score)
+
+        available_cash = max(0.0, self.cash_balance)
+        min_denom = max(1.0, float(self.p.min_entry_size_denominator))
+        base_allocation = available_cash / min_denom
+        if base_allocation <= 0:
+            return 0, 0.0, self.calculate_pnl_scale(combined_score)
+
+        pnl_scale = self.calculate_pnl_scale(combined_score)
+        target_allocation = min(base_allocation * pnl_scale, available_cash)
+        if target_allocation <= 0:
+            return 0, 0.0, pnl_scale
+        entry_size = target_allocation / current_price
+        actual_allocation = entry_size * current_price
+        if reserve_cash:
+            self.cash_balance -= actual_allocation
+        return entry_size, actual_allocation, pnl_scale
+
     def __init__(self):
         '''init is called once at the last row'''
 
@@ -292,7 +336,10 @@ class VipHLStrategy(bt.Strategy):
             self._debug_log_path = Path(debug_path).expanduser().resolve()
             self._debug_log_path.parent.mkdir(parents=True, exist_ok=True)
         self.pnl_history: List[Tuple[datetime, float]] = []
-        self.position_history: List[Tuple[datetime, int]] = []
+        self.position_history: List[Tuple[datetime, float]] = []
+        self.remaining_fund_history: List[Tuple[datetime, float]] = []
+        self.starting_fund = float(self.p.starting_fund)
+        self.cash_balance = self.starting_fund
 
         '''
         viphl
@@ -485,22 +532,22 @@ class VipHLStrategy(bt.Strategy):
 
         if within_lookback_period:# what is lookback period?
             if has_long_signal or has_vvip_long_signal:
-                self.record_trade(0, scoring_params, scoring_metrics)
-                self.viphl.commit_latest_recovery_window(break_hl_at_price)
+                trade_created = self.record_trade(0, scoring_params, scoring_metrics)
+                if trade_created:
+                    self.viphl.commit_latest_recovery_window(break_hl_at_price)
 
         self.manage_trade()
         self._record_position_snapshot()
+        self._record_fund_snapshot()
 
     def quote_trade(self, scoring_params, scoring_metrics):
         stop_loss_percent = self.calculate_stop_loss_percent()
+        entry_size, _, _ = self._determine_entry_allocation(scoring_metrics['combined_score'], reserve_cash=False)
 
         if self.p.debug_mode and hasattr(self, 'data') and len(self.data) > 0:
             print(f"[DEBUG] Combined Score - High: {scoring_metrics['high_score']:.3f}*{self.p.high_score_scaling_factor:.1f}={scoring_metrics['weighted_high']:.3f}, "
                   f"Low: {scoring_metrics['low_score']:.3f}*{self.p.low_score_scaling_factor:.1f}={scoring_metrics['weighted_low']:.3f}, "
                   f"Combined: {scoring_metrics['combined_score']:.3f}")
-
-        base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])
-        entry_size = max(1, math.floor(base_entry_size * scoring_metrics['combined_score']))
 
         # Create a new trade
         new_trade = TradeV2(
@@ -519,6 +566,8 @@ class VipHLStrategy(bt.Strategy):
             high_n=scoring_params["high_n"],
             low_m=scoring_params["low_m"],
             low_n=scoring_params["low_n"],
+            high_source=scoring_params.get("high_source", ""),
+            low_source=scoring_params.get("low_source", ""),
         )
 
         return new_trade
@@ -531,10 +580,17 @@ class VipHLStrategy(bt.Strategy):
                   f"Low: {scoring_metrics['low_score']:.3f}*{self.p.low_score_scaling_factor:.1f}={scoring_metrics['weighted_low']:.3f}, "
                   f"Combined: {combined_score:.3f}")
 
-        pnl_scale = self.calculate_pnl_scale(combined_score)
-
-        base_entry_size = math.floor(self.p.order_size_in_usd / self.data.close[0])
-        entry_size = max(1, math.floor(base_entry_size * combined_score))
+        entry_size, cash_used, pnl_scale = self._determine_entry_allocation(combined_score, reserve_cash=True)
+        if entry_size <= 0:
+            self._log_trade_event(
+                "Trade skipped",
+                {
+                    "current_bar": self.bar_index(),
+                    "reason": "insufficient_funds",
+                    "combined_score": f"{combined_score:.3f}",
+                },
+            )
+            return False
         is_trending_signal = scoring_params.get("is_trending", bool(self.is_ma_trending[0]))
 
         self.trade_list.append(
@@ -554,6 +610,8 @@ class VipHLStrategy(bt.Strategy):
                 high_n=scoring_params["high_n"],
                 low_m=scoring_params["low_m"],
                 low_n=scoring_params["low_n"],
+                high_source=scoring_params.get("high_source", ""),
+                low_source=scoring_params.get("low_source", ""),
             )
         )
 
@@ -571,6 +629,7 @@ class VipHLStrategy(bt.Strategy):
                 "entry_price": f"{self.data.close[0]:.2f}",
                 "entry_size": entry_size,
                 "combined_score": f"{combined_score:.3f}",
+                "cash_used": f"{cash_used:.2f}",
                 "high_score": f"{scoring_metrics['high_score']:.3f}",
                 "low_score": f"{scoring_metrics['low_score']:.3f}",
                 "pnl_scale": f"{pnl_scale:.3f}",
@@ -581,6 +640,7 @@ class VipHLStrategy(bt.Strategy):
                 "is_trending": bool(self.is_ma_trending[0]),
             },
         )
+        return True
 
     def manage_trade(self):
         self.cur_drawdown = 0.0
@@ -637,7 +697,9 @@ class VipHLStrategy(bt.Strategy):
                 # Take profit
                 elif cur_max_return > max(self.p.first_gain_ca_multiplier * self.close_average_percent, self.p.stop_loss_pt) and not trade.take_profit and self.data.datetime[0] > trade.entry_time:
                     cur_return = max(self.p.first_gain_ca_multiplier * self.close_average_percent, self.p.stop_loss_pt)
-                    closed_size = max(1, int(trade.total_entry_size * 0.33))
+                    closed_size = min(trade.open_entry_size, trade.total_entry_size * 0.33)
+                    if closed_size <= 0:
+                        continue
                     if self.p.toggle_pnl:
                         trade.first_time = self.data.datetime[0]
                         trade.first_return = cur_return
@@ -647,6 +709,8 @@ class VipHLStrategy(bt.Strategy):
                         scale = self.trade_scales.get(id(trade), 1.0)
                         self.total_pnl += cur_return / 3 * scale
                         trade.pnl += cur_return / 3 * scale
+                        exit_price = cur_entry_price * (1 + cur_return / 100)
+                        self.cash_balance += closed_size * exit_price
                         self._record_pnl_snapshot()
                     trade.take_profit = True # take ptofit meaning second time?
                     trade.open_entry_size = max(trade.open_entry_size - closed_size, 0)
@@ -680,15 +744,19 @@ class VipHLStrategy(bt.Strategy):
         pre_size = trade.open_entry_size
         if closed_size is None:
             closed_size = pre_size
-        remaining_size = max(pre_size - closed_size, 0)
+        closing_size = min(pre_size, closed_size)
+        remaining_size = max(pre_size - closing_size, 0)
         trade.first_time = self.data.datetime[0]
         trade.first_return = cur_return
-        self.current_equity += (1 + cur_return / 100) * cur_entry_price * trade.open_entry_size
+        self.current_equity += (1 + cur_return / 100) * cur_entry_price * closing_size
         self.max_equity = max(self.max_equity, self.current_equity)
         # Apply PnL scale
         scale = self.trade_scales.get(id(trade), 1.0)
         self.total_pnl += cur_return * scale
         trade.pnl += cur_return * scale
+        exit_price = cur_entry_price * (1 + cur_return / 100)
+        self.cash_balance += closing_size * exit_price
+        trade.open_entry_size = remaining_size
         self._record_pnl_snapshot()
         self._log_trade_event(
             "Trade exit (first leg)",
@@ -709,13 +777,17 @@ class VipHLStrategy(bt.Strategy):
         pre_size = trade.open_entry_size
         if closed_size is None:
             closed_size = pre_size
+        closing_size = min(pre_size, closed_size)
         trade.second_return = cur_return
-        self.current_equity += (1 + cur_return / 100) * cur_entry_price * trade.open_entry_size
+        self.current_equity += (1 + cur_return / 100) * cur_entry_price * closing_size
         self.max_equity = max(self.max_equity, self.current_equity)
         # Apply PnL scale
         scale = self.trade_scales.get(id(trade), 1.0)
         self.total_pnl += cur_return * 2 / 3 * scale
         trade.pnl += cur_return * 2 / 3 * scale
+        exit_price = cur_entry_price * (1 + cur_return / 100)
+        self.cash_balance += closing_size * exit_price
+        trade.open_entry_size = max(pre_size - closing_size, 0)
         self._record_pnl_snapshot()
         self._log_trade_event(
             "Trade exit (second leg)",

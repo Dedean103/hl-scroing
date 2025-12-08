@@ -73,6 +73,8 @@ DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
     "debug_mode": True,
     "debug_log_path": str(RESULTS_ROOT),
     "lookback": 1000,
+    "starting_fund": 2_000_000,
+    "min_entry_size_denominator": 100,
 }
 
 
@@ -131,6 +133,8 @@ def build_strategy_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
         config["plot_start_date"] = args.start_date
     if args.end_date:
         config["plot_end_date"] = args.end_date
+    config["starting_fund"] = args.starting_fund
+    config["min_entry_size_denominator"] = args.min_entry_size_denominator
 
     return config
 
@@ -579,6 +583,10 @@ def export_trade_log(
         entry_dt = num2date(trade.entry_time)
         first_exit_dt = num2date(trade.first_time) if trade.first_time else None
         second_exit_dt = num2date(trade.second_time) if trade.second_time else None
+        high_source = getattr(trade, "high_source", "") or ""
+        low_source = getattr(trade, "low_source", "") or ""
+        static_high_used = high_source != "dynamic" and bool(high_source)
+        static_low_used = low_source != "dynamic" and bool(low_source)
         rows.append(
             {
                 "No.": idx,
@@ -588,6 +596,8 @@ def export_trade_log(
                 "Weighted PnL%": round(trade.pnl, 4),
                 "Combined Score": round(getattr(trade, "combined_score", 0.0), 4),
                 "Signal Type": "Trending" if getattr(trade, "is_trending_trade", False) else "Normal",
+                "Static High Used": static_high_used,
+                "Static Low Used": static_low_used,
                 "High (m,n)": f"({getattr(trade, 'high_m', 0):.2f}, {getattr(trade, 'high_n', 0):.2f})",
                 "Low (m,n)": f"({getattr(trade, 'low_m', 0):.2f}, {getattr(trade, 'low_n', 0):.2f})",
             }
@@ -629,18 +639,25 @@ def export_daily_equity_summary(
         default_timestamp=first_timestamp,
         default_value=0,
     )
+    fund_series = _history_to_series(
+        history=getattr(strategy, "remaining_fund_history", []),
+        default_timestamp=first_timestamp,
+        default_value=getattr(strategy, "starting_fund", 0.0),
+    )
 
     target_index = pd.Index(day_end_times.values, name="day_end")
     pnl_values = pnl_series.reindex(target_index, method="ffill")
     position_values = position_series.reindex(target_index, method="ffill")
+    fund_values = fund_series.reindex(target_index, method="ffill")
     pnl_values = pnl_values.ffill().fillna(0.0)
     position_values = position_values.ffill().fillna(0).abs()
+    fund_values = fund_values.ffill().fillna(getattr(strategy, "starting_fund", 0.0))
 
     summary_frame = pd.DataFrame(
         {
             "Date": [ts.date().isoformat() for ts in day_end_times.index],
             "Day End PnL%": pnl_values.to_numpy(dtype=float),
-            "Total Position Size": position_values.astype(int).to_numpy(),
+            "Remaining Fund": fund_values.to_numpy(dtype=float),
         }
     )
 
@@ -700,6 +717,13 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument("--debug-log", default=str(RESULTS_ROOT), help="Directory or file path for debug markdown output.")
     parser.add_argument("--lookback", type=int, default=DEFAULT_STRATEGY_CONFIG["lookback"], help="Bars from the end that remain eligible for new trades.")
+    parser.add_argument("--starting-fund", type=float, default=DEFAULT_STRATEGY_CONFIG["starting_fund"], help="Starting capital (USD) used for position sizing.")
+    parser.add_argument(
+        "--min-entry-size-denominator",
+        type=float,
+        default=DEFAULT_STRATEGY_CONFIG["min_entry_size_denominator"],
+        help="Divisor applied to remaining funds to compute the minimum allocation per trade.",
+    )
     parser.add_argument("--no-save", action="store_true", help="Skip saving the PNG output.")
     parser.add_argument("--show-plot", action="store_true", help="Show the matplotlib window after generation.")
     parser.add_argument("--start-date", type=str, default='2023-01-01', help="Optional inclusive start date for plotting (YYYY-MM-DD).")
