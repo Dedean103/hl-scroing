@@ -135,8 +135,28 @@ def build_strategy_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
         config["plot_end_date"] = args.end_date
     config["starting_fund"] = args.starting_fund
     config["min_entry_size_denominator"] = args.min_entry_size_denominator
+    if getattr(args, "lookback_date", None):
+        config["lookback_date"] = args.lookback_date
 
     return config
+
+
+def _compute_lookback_from_date(index: pd.Index, lookback_date: Optional[str]) -> Optional[int]:
+    """Convert a date string into bar-count lookback relative to the dataset end."""
+    if not lookback_date:
+        return None
+    try:
+        target_date = pd.to_datetime(lookback_date)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(index, pd.DatetimeIndex) or len(index) == 0:
+        return None
+    last_pos = len(index) - 1
+    try:
+        first_allowed = next(i for i, ts in enumerate(index) if ts >= target_date)
+    except StopIteration:
+        return None
+    return max(0, last_pos - first_allowed)
 
 
 def run_strategy_and_plot(
@@ -158,6 +178,11 @@ def run_strategy_and_plot(
     strategy_args = dict(strategy_kwargs or DEFAULT_STRATEGY_CONFIG)
     plot_start = strategy_args.pop("plot_start_date", None)
     plot_end = strategy_args.pop("plot_end_date", None)
+    lookback_date = strategy_args.pop("lookback_date", None)
+    if lookback_date:
+        computed_lookback = _compute_lookback_from_date(dataframe.index, lookback_date)
+        if computed_lookback is not None:
+            strategy_args["lookback"] = computed_lookback
 
     run_token = "{normal}_{trend}_{scoreflag}_bar{bar_count}_{stamp}".format(
         normal=strategy_args.get("mn_start_point_high", "na"),
@@ -652,11 +677,14 @@ def export_daily_equity_summary(
     pnl_values = pnl_values.ffill().fillna(0.0)
     position_values = position_values.ffill().fillna(0).abs()
     fund_values = fund_values.ffill().fillna(getattr(strategy, "starting_fund", 0.0))
+    prev_fund = fund_values.shift(1)
+    daily_change_values = fund_values.subtract(prev_fund).div(prev_fund.replace(0, pd.NA)).mul(100).fillna(0.0)
 
     summary_frame = pd.DataFrame(
         {
             "Date": [ts.date().isoformat() for ts in day_end_times.index],
             "Day End PnL%": pnl_values.to_numpy(dtype=float),
+            "Daily Change%": daily_change_values.to_numpy(dtype=float),
             "Remaining Fund": fund_values.to_numpy(dtype=float),
         }
     )
@@ -717,6 +745,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument("--debug-log", default=str(RESULTS_ROOT), help="Directory or file path for debug markdown output.")
     parser.add_argument("--lookback", type=int, default=DEFAULT_STRATEGY_CONFIG["lookback"], help="Bars from the end that remain eligible for new trades.")
+    parser.add_argument("--lookback-date", type=str, default=None, help="Optional calendar date (YYYY-MM-DD); trades before this date are ignored.")
     parser.add_argument("--starting-fund", type=float, default=DEFAULT_STRATEGY_CONFIG["starting_fund"], help="Starting capital (USD) used for position sizing.")
     parser.add_argument(
         "--min-entry-size-denominator",

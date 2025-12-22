@@ -131,12 +131,18 @@ class VipHLStrategy(bt.Strategy):
                 f.write(f"- **{key}**: {value}\n")
             f.write("\n")
 
-    def _record_pnl_snapshot(self, event_time=None):
+    def _record_pnl_snapshot(self, event_time=None, equity=None):
         if event_time is None and hasattr(self, "data") and len(self.data) > 0:
             event_time = num2date(self.data.datetime[0])
         if event_time is None:
             event_time = datetime.utcnow()
-        self.pnl_history.append((event_time, self.total_pnl))
+        if equity is None:
+            equity = self.cash_balance + self._compute_unrealized_value()
+        if self.starting_fund > 0:
+            pnl_percent = (equity - self.starting_fund) / self.starting_fund * 100.0
+        else:
+            pnl_percent = 0.0
+        self.pnl_history.append((event_time, pnl_percent))
 
     def _record_position_snapshot(self, event_time=None):
         if event_time is None and hasattr(self, "data") and len(self.data) > 0:
@@ -165,6 +171,8 @@ class VipHLStrategy(bt.Strategy):
             event_time = datetime.utcnow()
         equity = self.cash_balance + self._compute_unrealized_value()
         self.remaining_fund_history.append((event_time, equity))
+        # Keep the PnL history aligned with the same mark-to-market snapshot
+        self._record_pnl_snapshot(event_time=event_time, equity=equity)
 
     def calculate_hl_byp_score(self, m, n, pivot_type='high', is_trending=False):
         '''Calculate normalized HL byP score (0-1) based on m,n parameters with power scaling'''
