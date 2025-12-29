@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 """
-Utility script to run the VipHL strategy with the dynamic (m, n) detector and
-visualize trade executions plus HL lines in a single pass.
+Run VipHL strategy with dynamic (m, n) detector and visualize results.
 
-This combines the old plotting helpers into one up-to-date entry point that
-understands the latest Settings/Strategy parameters.
+Supports both single-run and grid-search modes:
+- Single run: main(mn_start_normal=10, mn_start_trend=4)
+- Grid search: main(mn_start_normal=[8,10,12], mn_start_trend=[4,5,6])
+- Direct execution: python run_viphl_and_plot.py (uses DEFAULT_MAIN_OPTIONS)
 """
 
 from __future__ import annotations
 
-import argparse
-from datetime import datetime
 from datetime import datetime
 from pathlib import Path
 import sys
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import backtrader as bt
 from backtrader import num2date
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.lines import Line2D
+from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parent
@@ -77,6 +77,32 @@ DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
     "min_entry_size_denominator": 100,
 }
 
+DEFAULT_MAIN_OPTIONS = {
+    "csv": "BTC.csv",
+    "mintick": 0.01,
+    "mn_start_normal": [8,10],#[8, 10, 12],
+    "mn_cap_normal": 20,#[20, 30, 40],
+    "mn_start_trend": 4,#[4, 5, 6],
+    "mn_cap_trend": 20,#[20, 30, 40],
+    "static_window": 0,
+    "power_scaling_factor": 1.5, #k
+    "high_score_scaling_factor": 0.5,
+    "low_score_scaling_factor": 0.5,
+    "on_trend_ratio": 1.0,
+    "enable_scoring": True, #[True, False],
+    "bar_count_to_by_point": 800,
+    "debug_log": str(RESULTS_ROOT),
+    "lookback": None,
+    "lookback_date": "2023-09-01",
+    "starting_fund": 2_000_000,
+    "min_entry_size_denominator": 50,
+    "no_save": False,
+    "show_plot": False,
+    "start_date": "2022-01-01",
+    "end_date": "2025-12-01",
+    "output_dir": None,
+}
+
 
 def resolve_csv_path(csv_path: str) -> Path:
     """Return an existing CSV path, searching relative to this module if needed."""
@@ -91,21 +117,73 @@ def resolve_csv_path(csv_path: str) -> Path:
     raise FileNotFoundError(f"Could not find CSV at '{csv_path}' or '{fallback}'.")
 
 
-def build_strategy_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
-    """Merge CLI overrides into the default strategy configuration."""
+def _normalize_mn_values(value: Union[int, Iterable[int]]) -> List[int]:
+    """Convert ints or iterables of ints into a concrete list."""
+    if isinstance(value, int):
+        return [value]
+    if not value:
+        return []
+    if isinstance(value, Iterable):
+        return [int(v) for v in value]
+    return [int(value)]
+
+
+def _normalize_boolean_values(value: Union[bool, Iterable[bool]]) -> List[bool]:
+    """Turn a bool/iterable into a normalized list of bools."""
+    true_values = {"1", "true", "t", "yes", "y"}
+    if isinstance(value, bool):
+        return [value]
+    if isinstance(value, str):
+        return [value.lower() in true_values]
+    if not value:
+        return []
+    if isinstance(value, Iterable):
+        normalized = []
+        for entry in value:
+            if isinstance(entry, bool):
+                normalized.append(entry)
+            else:
+                normalized.append(str(entry).lower() in true_values)
+        return normalized
+    return [bool(value)]
+
+
+def build_strategy_kwargs(
+    csv: str,
+    mintick: float,
+    mn_start_normal: int,
+    mn_cap_normal: int,
+    mn_start_trend: int,
+    mn_cap_trend: int,
+    static_window: int,
+    power_scaling_factor: float,
+    high_score_scaling_factor: float,
+    low_score_scaling_factor: float,
+    on_trend_ratio: float,
+    enable_scoring: bool,
+    bar_count_to_by_point: int,
+    debug_log: str,
+    lookback: int,
+    lookback_date: Optional[str],
+    starting_fund: float,
+    min_entry_size_denominator: float,
+    start_date: str,
+    end_date: str,
+) -> Dict[str, Any]:
+    """Merge configuration values into the default strategy configuration."""
     config = dict(DEFAULT_STRATEGY_CONFIG)
-    config["mintick"] = args.mintick
-    config["lookback"] = args.lookback
+    config["mintick"] = mintick
+    config["lookback"] = lookback
 
-    config["mn_start_point_high"] = args.mn_start_normal
-    config["mn_start_point_low"] = args.mn_start_normal
-    config["mn_cap_high"] = args.mn_cap_normal
-    config["mn_cap_low"] = args.mn_cap_normal
+    config["mn_start_point_high"] = mn_start_normal
+    config["mn_start_point_low"] = mn_start_normal
+    config["mn_cap_high"] = mn_cap_normal
+    config["mn_cap_low"] = mn_cap_normal
 
-    config["mn_start_point_high_trend"] = args.mn_start_trend
-    config["mn_start_point_low_trend"] = args.mn_start_trend
-    config["mn_cap_high_trend"] = args.mn_cap_trend
-    config["mn_cap_low_trend"] = args.mn_cap_trend
+    config["mn_start_point_high_trend"] = mn_start_trend
+    config["mn_start_point_low_trend"] = mn_start_trend
+    config["mn_cap_high_trend"] = mn_cap_trend
+    config["mn_cap_low_trend"] = mn_cap_trend
 
     # Keep static fallback windows aligned with the starting dynamic window
     for key in (
@@ -118,25 +196,24 @@ def build_strategy_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
         "low_by_point_n_on_trend",
         "low_by_point_m_on_trend",
     ):
-        config[key] = args.static_window if args.static_window else config[key]
+        config[key] = static_window if static_window else config[key]
 
-    config["power_scaling_factor"] = args.power_scaling_factor
-    config["high_score_scaling_factor"] = args.high_score_scaling_factor
-    config["low_score_scaling_factor"] = args.low_score_scaling_factor
-    config["on_trend_ratio"] = args.on_trend_ratio
-    if args.debug_log:
-        config["debug_log_path"] = args.debug_log
-    if getattr(args, "enable_scoring", None) is not None:
-        config["enable_hl_byp_scoring"] = bool(args.enable_scoring)
-    config["bar_count_to_by_point"] = args.bar_count_to_by_point
-    if args.start_date:
-        config["plot_start_date"] = args.start_date
-    if args.end_date:
-        config["plot_end_date"] = args.end_date
-    config["starting_fund"] = args.starting_fund
-    config["min_entry_size_denominator"] = args.min_entry_size_denominator
-    if getattr(args, "lookback_date", None):
-        config["lookback_date"] = args.lookback_date
+    config["power_scaling_factor"] = power_scaling_factor
+    config["high_score_scaling_factor"] = high_score_scaling_factor
+    config["low_score_scaling_factor"] = low_score_scaling_factor
+    config["on_trend_ratio"] = on_trend_ratio
+    if debug_log:
+        config["debug_log_path"] = debug_log
+    config["enable_hl_byp_scoring"] = bool(enable_scoring)
+    config["bar_count_to_by_point"] = bar_count_to_by_point
+    if start_date:
+        config["plot_start_date"] = start_date
+    if end_date:
+        config["plot_end_date"] = end_date
+    config["starting_fund"] = starting_fund
+    config["min_entry_size_denominator"] = min_entry_size_denominator
+    if lookback_date:
+        config["lookback_date"] = lookback_date
 
     return config
 
@@ -184,9 +261,11 @@ def run_strategy_and_plot(
         if computed_lookback is not None:
             strategy_args["lookback"] = computed_lookback
 
-    run_token = "{normal}_{trend}_{scoreflag}_bar{bar_count}_{stamp}".format(
+    run_token = "{normal}_{normal_cap}_{trend}_{trend_cap}_{scoreflag}_bar{bar_count}_{stamp}".format(
         normal=strategy_args.get("mn_start_point_high", "na"),
         trend=strategy_args.get("mn_start_point_high_trend", "na"),
+        normal_cap=strategy_args.get("mn_cap_high", "na"),
+        trend_cap=strategy_args.get("mn_cap_high_trend", "na"),
         scoreflag=1 if strategy_args.get("enable_hl_byp_scoring") else 0,
         bar_count=strategy_args.get("bar_count_to_by_point", "na"),
         stamp=datetime.utcnow().strftime("%Y%m%d%H%M%S"),
@@ -267,7 +346,7 @@ def run_strategy_and_plot(
     pnl_plot_filename = None
     if save_plot:
         output_root.mkdir(parents=True, exist_ok=True)
-        pnl_plot_filename = output_root / f"{ticker}_viphl_pnl_{run_token}.png"
+        pnl_plot_filename = output_root / f"{ticker}_cumu_pnl_{run_token}.png"
     if pnl_history:
         plot_cumulative_pnl(
             pnl_history=pnl_history,
@@ -291,6 +370,20 @@ def run_strategy_and_plot(
         ticker=ticker,
         run_token=run_token,
     )
+
+    # Generate BTC price overlay charts if daily summary was created
+    if save_plot:
+        daily_summary_csv = output_root / f"{ticker}_daily_summary_{run_token}.csv"
+        btc_csv = csv_file.parent / "BTC.csv"
+        if daily_summary_csv.exists() and btc_csv.exists():
+            generate_btc_overlay_charts(
+                summary_csv=daily_summary_csv,
+                btc_csv=btc_csv,
+                output_dir=output_root,
+                run_token=run_token,
+                ticker=ticker,
+                show_plot=show_plot,
+            )
 
     return strat, cerebro
 
@@ -631,7 +724,7 @@ def export_trade_log(
     df = pd.DataFrame(rows)
     target_dir = output_dir or Path(".")
     target_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = target_dir / f"{ticker}_viphl_trade_log_{run_token}.csv"
+    csv_path = target_dir / f"{ticker}_trade_log_{run_token}.csv"
     df.to_csv(csv_path, index=False)
     print(f"Trade log saved to {csv_path}")
     return csv_path
@@ -691,7 +784,7 @@ def export_daily_equity_summary(
 
     target_dir = output_dir or Path(".")
     target_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = target_dir / f"{ticker}_viphl_daily_summary_{run_token}.csv"
+    csv_path = target_dir / f"{ticker}_daily_summary_{run_token}.csv"
     summary_frame.to_csv(csv_path, index=False)
     print(f"Daily equity summary saved to {csv_path}")
     return csv_path
@@ -717,67 +810,294 @@ def _history_to_series(history, default_timestamp, default_value):
     return pd.Series(df["value"].to_numpy(), index=df["timestamp"])
 
 
-def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
-    pmt = 4
-    cap = 20
-    parser = argparse.ArgumentParser(
-        description="Run VipHLStrategy with dynamic (m, n) sizing and plot the resulting trades.",
-    )
-    parser.add_argument("--csv", default="BTC.csv", help="Path to the OHLCV CSV (default: %(default)s).")
-    parser.add_argument("--mintick", type=float, default=0.01, help="Minimum tick size passed to the strategy.")
-    parser.add_argument("--mn-start-normal", type=int, default=pmt, help="Starting m/n window for normal pivots.")
-    parser.add_argument("--mn-cap-normal", type=int, default=cap, help="Maximum m/n window for normal pivots.")
-    parser.add_argument("--mn-start-trend", type=int, default=pmt, help="Starting m/n window for trending pivots.")
-    parser.add_argument("--mn-cap-trend", type=int, default=cap, help="Maximum m/n window for trending pivots.")
-    parser.add_argument("--static-window", type=int, default=0, help="Optional override for static fallback windows.")
-    parser.add_argument("--power-scaling-factor", type=float, default=1.5, help="k exponent for HL scoring.")
-    parser.add_argument("--high-score-scaling-factor", type=float, default=0.5, help="Weight on high pivots.")
-    parser.add_argument("--low-score-scaling-factor", type=float, default=0.5, help="Weight on low pivots.")
-    parser.add_argument("--on-trend-ratio", type=float, default=1.0, help="Weight boost applied in trending mode.")
-    parser.add_argument("--enable-scoring", dest="enable_scoring", action="store_true", help="Enable HL-by-point scoring.")
-    parser.add_argument("--disable-scoring", dest="enable_scoring", action="store_false", help="Disable HL-by-point scoring.")
-    parser.set_defaults(enable_scoring=True)
-    parser.add_argument(
-        "--bar-count-to-by-point",
-        type=int,
-        default=DEFAULT_STRATEGY_CONFIG["bar_count_to_by_point"],
-        help="Override the draw-from-recent window size.",
-    )
-    parser.add_argument("--debug-log", default=str(RESULTS_ROOT), help="Directory or file path for debug markdown output.")
-    parser.add_argument("--lookback", type=int, default=DEFAULT_STRATEGY_CONFIG["lookback"], help="Bars from the end that remain eligible for new trades.")
-    parser.add_argument("--lookback-date", type=str, default=None, help="Optional calendar date (YYYY-MM-DD); trades before this date are ignored.")
-    parser.add_argument("--starting-fund", type=float, default=DEFAULT_STRATEGY_CONFIG["starting_fund"], help="Starting capital (USD) used for position sizing.")
-    parser.add_argument(
-        "--min-entry-size-denominator",
-        type=float,
-        default=DEFAULT_STRATEGY_CONFIG["min_entry_size_denominator"],
-        help="Divisor applied to remaining funds to compute the minimum allocation per trade.",
-    )
-    parser.add_argument("--no-save", action="store_true", help="Skip saving the PNG output.")
-    parser.add_argument("--show-plot", action="store_true", help="Show the matplotlib window after generation.")
-    parser.add_argument("--start-date", type=str, default='2023-01-01', help="Optional inclusive start date for plotting (YYYY-MM-DD).")
-    parser.add_argument("--end-date", type=str, default='2023-10-01', help="Optional inclusive end date for plotting (YYYY-MM-DD).")
-    parser.add_argument(
-        "--output-dir",
-        default=None,
-        help="Optional directory for plot output; defaults to the CSV directory.",
-    )
-    return parser.parse_args(argv)
+def _load_btc_price(price_csv: Path) -> pd.Series:
+    """Load BTC daily closing prices from CSV."""
+    price_csv = Path(price_csv).expanduser().resolve()
+    if not price_csv.is_file():
+        return pd.Series(dtype=float)
+
+    try:
+        price_df = pd.read_csv(price_csv, parse_dates=["datetime"])
+        if "close" not in price_df.columns:
+            return pd.Series(dtype=float)
+
+        price_df["Date"] = price_df["datetime"].dt.normalize()
+        price_df.sort_values("Date", inplace=True)
+        daily_price = price_df.groupby("Date")["close"].last()
+        daily_price.name = "BTC Close"
+        return daily_price
+    except Exception:
+        return pd.Series(dtype=float)
 
 
-def main(argv: Optional[Iterable[str]] = None) -> None:
-    args = parse_args(argv)
-    csv_path = resolve_csv_path(args.csv)
-    output_dir = Path(args.output_dir).expanduser().resolve() if args.output_dir else None
-    strategy_kwargs = build_strategy_kwargs(args)
+def _align_price(summary_dates: pd.Series, price_series: pd.Series) -> pd.Series:
+    """Align BTC price data to summary dates using forward/backward fill."""
+    if price_series.empty:
+        return pd.Series(dtype=float)
+    date_index = pd.DatetimeIndex(summary_dates)
+    aligned = price_series.reindex(date_index)
+    aligned = aligned.ffill().bfill()
+    return pd.Series(aligned.to_numpy(), index=date_index, name="BTC Close")
 
-    run_strategy_and_plot(
-        csv_file=csv_path,
-        save_plot=not args.no_save,
-        show_plot=args.show_plot,
-        output_dir=output_dir,
-        strategy_kwargs=strategy_kwargs,
-    )
+
+def _plot_remaining_fund(summary_df: pd.DataFrame, price_series: pd.Series, output_path: Path, show_plot: bool) -> Path:
+    """Plot remaining fund (portfolio value) with BTC price overlay."""
+    fig, ax_left = plt.subplots(figsize=(14, 6))
+    ax_left.plot(summary_df["Date"], summary_df["Remaining Fund"], color="tab:blue", linewidth=2.0, label="Remaining Fund")
+    ax_left.set_xlabel("Date")
+    ax_left.set_ylabel("Remaining Fund (USD)", color="tab:blue")
+    ax_left.tick_params(axis="y", labelcolor="tab:blue")
+    ax_left.grid(True, linestyle="--", alpha=0.3)
+
+    ax_right = ax_left.twinx()
+    ax_right.plot(summary_df["Date"], price_series, color="tab:orange", linewidth=1.8, label="BTC Close")
+    ax_right.set_ylabel("BTC Close (USD)", color="tab:orange")
+    ax_right.tick_params(axis="y", labelcolor="tab:orange")
+
+    ax_left.set_title("Remaining Fund vs BTC Price")
+    fig.autofmt_xdate()
+
+    lines_left, labels_left = ax_left.get_legend_handles_labels()
+    lines_right, labels_right = ax_right.get_legend_handles_labels()
+    ax_left.legend(lines_left + lines_right, labels_left + labels_right, loc="upper left")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    print(f"Remaining fund plot saved to {output_path}")
+
+    if show_plot:
+        plt.show()
+    else:
+        plt.close(fig)
+    return output_path
+
+
+def _plot_day_end_pnl(summary_df: pd.DataFrame, price_series: pd.Series, output_path: Path, show_plot: bool) -> Path:
+    """Plot day-end PnL% with BTC price overlay."""
+    pnl = summary_df["Day End PnL%"]
+
+    fig, ax_left = plt.subplots(figsize=(14, 6))
+    ax_left.plot(summary_df["Date"], pnl, color="tab:blue", linewidth=2.0, label="Day End PnL%")
+    ax_left.set_xlabel("Date")
+    ax_left.set_ylabel("Day End PnL (%)", color="tab:blue")
+    ax_left.tick_params(axis="y", labelcolor="tab:blue")
+    ax_left.grid(True, linestyle="--", alpha=0.3)
+
+    ax_right = ax_left.twinx()
+    ax_right.plot(summary_df["Date"], price_series, color="tab:orange", linewidth=1.6, label="BTC Close")
+    ax_right.set_ylabel("BTC Close (USD)", color="tab:orange")
+    ax_right.tick_params(axis="y", labelcolor="tab:orange")
+
+    ax_left.set_title("Day End PnL% vs BTC Price")
+    fig.autofmt_xdate()
+
+    lines_left, labels_left = ax_left.get_legend_handles_labels()
+    lines_right, labels_right = ax_right.get_legend_handles_labels()
+    ax_left.legend(lines_left + lines_right, labels_left + labels_right, loc="upper left")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    print(f"Day-end PnL plot saved to {output_path}")
+
+    if show_plot:
+        plt.show()
+    else:
+        plt.close(fig)
+    return output_path
+
+
+def _plot_daily_change_bars(summary_df: pd.DataFrame, price_series: pd.Series, output_path: Path, show_plot: bool) -> Path:
+    """Plot daily change % bars with BTC price overlay."""
+    daily_change = summary_df["Daily Change%"]
+    colors = ["tab:green" if value >= 0 else "tab:red" for value in daily_change]
+
+    fig, ax_left = plt.subplots(figsize=(14, 6))
+    ax_left.bar(summary_df["Date"], daily_change, color=colors, label="Daily Change%", alpha=0.8)
+    ax_left.axhline(0, color="black", linewidth=1.0, linestyle="--", alpha=0.6)
+    ax_left.set_xlabel("Date")
+    ax_left.set_ylabel("Daily Change (%)", color="tab:gray")
+    ax_left.grid(True, linestyle="--", alpha=0.3)
+
+    ax_right = ax_left.twinx()
+    ax_right.plot(summary_df["Date"], price_series, color="tab:purple", linewidth=1.5, label="BTC Close")
+    ax_right.set_ylabel("BTC Close (USD)", color="tab:purple")
+    ax_right.tick_params(axis="y", labelcolor="tab:purple")
+
+    ax_left.set_title("Daily Increment vs BTC Price")
+    fig.autofmt_xdate()
+
+    lines_left, labels_left = ax_left.get_legend_handles_labels()
+    lines_right, labels_right = ax_right.get_legend_handles_labels()
+    ax_left.legend(lines_left + lines_right, labels_left + labels_right, loc="upper left")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    print(f"Daily increment plot saved to {output_path}")
+
+    if show_plot:
+        plt.show()
+    else:
+        plt.close(fig)
+    return output_path
+
+
+def generate_btc_overlay_charts(
+    summary_csv: Path,
+    btc_csv: Path,
+    output_dir: Path,
+    run_token: str,
+    ticker: str,
+    show_plot: bool = False,
+) -> Tuple[Optional[Path], Optional[Path], Optional[Path]]:
+    """Generate 3 BTC overlay charts from daily summary CSV."""
+    try:
+        # Load data
+        summary_df = pd.read_csv(summary_csv, parse_dates=["Date"])
+        if summary_df.empty:
+            return None, None, None
+
+        price_series = _load_btc_price(btc_csv)
+        if price_series.empty:
+            return None, None, None
+
+        aligned_price = _align_price(summary_df["Date"], price_series)
+
+        # Generate charts
+        remaining_path = output_dir / f"{ticker}_remaining_fund_{run_token}.png"
+        day_end_path = output_dir / f"{ticker}_day_end_pnl_{run_token}.png"
+        daily_path = output_dir / f"{ticker}_daily_increment_{run_token}.png"
+
+        _plot_remaining_fund(summary_df, aligned_price, remaining_path, show_plot)
+        _plot_day_end_pnl(summary_df, aligned_price, day_end_path, show_plot)
+        _plot_daily_change_bars(summary_df, aligned_price, daily_path, show_plot)
+
+        return remaining_path, day_end_path, daily_path
+    except Exception as e:
+        print(f"Error generating BTC overlay charts: {e}")
+        return None, None, None
+
+
+def main(
+    csv: str = DEFAULT_MAIN_OPTIONS["csv"],
+    mintick: float = DEFAULT_MAIN_OPTIONS["mintick"],
+    mn_start_normal: Union[int, Iterable[int]] = DEFAULT_MAIN_OPTIONS["mn_start_normal"],
+    mn_cap_normal: Union[int, Iterable[int]] = DEFAULT_MAIN_OPTIONS["mn_cap_normal"],
+    mn_start_trend: Union[int, Iterable[int]] = DEFAULT_MAIN_OPTIONS["mn_start_trend"],
+    mn_cap_trend: Union[int, Iterable[int]] = DEFAULT_MAIN_OPTIONS["mn_cap_trend"],
+    static_window: int = DEFAULT_MAIN_OPTIONS["static_window"],
+    power_scaling_factor: float = DEFAULT_MAIN_OPTIONS["power_scaling_factor"],
+    high_score_scaling_factor: float = DEFAULT_MAIN_OPTIONS["high_score_scaling_factor"],
+    low_score_scaling_factor: float = DEFAULT_MAIN_OPTIONS["low_score_scaling_factor"],
+    on_trend_ratio: float = DEFAULT_MAIN_OPTIONS["on_trend_ratio"],
+    enable_scoring: Union[bool, Iterable[bool]] = DEFAULT_MAIN_OPTIONS["enable_scoring"],
+    bar_count_to_by_point: int = DEFAULT_MAIN_OPTIONS["bar_count_to_by_point"],
+    debug_log: str = DEFAULT_MAIN_OPTIONS["debug_log"],
+    lookback: int = DEFAULT_MAIN_OPTIONS["lookback"],
+    lookback_date: Optional[str] = DEFAULT_MAIN_OPTIONS["lookback_date"],
+    starting_fund: float = DEFAULT_MAIN_OPTIONS["starting_fund"],
+    min_entry_size_denominator: float = DEFAULT_MAIN_OPTIONS["min_entry_size_denominator"],
+    no_save: bool = DEFAULT_MAIN_OPTIONS["no_save"],
+    show_plot: bool = DEFAULT_MAIN_OPTIONS["show_plot"],
+    start_date: str = DEFAULT_MAIN_OPTIONS["start_date"],
+    end_date: str = DEFAULT_MAIN_OPTIONS["end_date"],
+    output_dir: Optional[str] = DEFAULT_MAIN_OPTIONS["output_dir"],
+) -> Tuple[Optional[VipHLStrategy], Optional[Cerebro]]:
+    """Run VipHL strategy with support for grid search.
+
+    Accepts either single values or iterables of values for parameters.
+    When iterables are provided, runs a grid search across all combinations.
+
+    Example single run:
+        main(mn_start_normal=10, mn_start_trend=4)
+
+    Example grid search:
+        main(
+            mn_start_normal=[8, 10, 12],
+            mn_start_trend=[4, 5, 6],
+            mn_cap_normal=[20, 30]
+        )
+    """
+
+    csv_path = resolve_csv_path(csv)
+    resolved_output_dir = Path(output_dir).expanduser().resolve() if output_dir else None
+
+    normal_values = _normalize_mn_values(mn_start_normal)
+    trend_values = _normalize_mn_values(mn_start_trend)
+    normal_cap_values = _normalize_mn_values(mn_cap_normal)
+    trend_cap_values = _normalize_mn_values(mn_cap_trend)
+    scoring_values = _normalize_boolean_values(enable_scoring)
+
+    summary_records = []
+    last_result: Tuple[Optional[VipHLStrategy], Optional[Cerebro]] = (None, None)
+
+    for normal in normal_values:
+        for trend in trend_values:
+            for normal_cap in normal_cap_values:
+                for trend_cap in trend_cap_values:
+                    for scoring in scoring_values:
+                        strategy_kwargs = build_strategy_kwargs(
+                            csv=csv,
+                            mintick=mintick,
+                            mn_start_normal=normal,
+                            mn_cap_normal=normal_cap,
+                            mn_start_trend=trend,
+                            mn_cap_trend=trend_cap,
+                            static_window=static_window,
+                            power_scaling_factor=power_scaling_factor,
+                            high_score_scaling_factor=high_score_scaling_factor,
+                            low_score_scaling_factor=low_score_scaling_factor,
+                            on_trend_ratio=on_trend_ratio,
+                            enable_scoring=scoring,
+                            bar_count_to_by_point=bar_count_to_by_point,
+                            debug_log=debug_log,
+                            lookback=lookback,
+                            lookback_date=lookback_date,
+                            starting_fund=starting_fund,
+                            min_entry_size_denominator=min_entry_size_denominator,
+                            start_date=start_date,
+                            end_date=end_date,
+                        )
+
+                        is_grid_search = len(normal_values) > 1 or len(trend_values) > 1 or len(normal_cap_values) > 1 or len(trend_cap_values) > 1 or len(scoring_values) > 1
+                        if is_grid_search:
+                            print(
+                                f"=== Running grid combination: normal {normal}, trend {trend}, normal_cap {normal_cap}, "
+                                f"trend_cap {trend_cap}, scoring {scoring} ==="
+                            )
+
+                        strat, cerebro = run_strategy_and_plot(
+                            csv_file=csv_path,
+                            save_plot=not no_save,
+                            show_plot=show_plot,
+                            output_dir=resolved_output_dir,
+                            strategy_kwargs=strategy_kwargs,
+                        )
+                        last_result = (strat, cerebro)
+
+                        stats = getattr(strat, "result", {})
+                        summary_records.append(
+                            {
+                                "mn_start_normal": normal,
+                                "mn_cap_normal": normal_cap,
+                                "mn_start_trend": trend,
+                                "mn_cap_trend": trend_cap,
+                                "enable_scoring": scoring,
+                                "Total Pnl%": stats.get("Total Pnl%", 0.0),
+                                "Fit Score": stats.get("Fit Score", 0.0),
+                                "Trade Count": stats.get("Trade Count", 0),
+                                "Scale": stats.get("Scale", 0),
+                            }
+                        )
+
+    if summary_records and len(summary_records) > 1:
+        summary_root = resolved_output_dir or RESULTS_ROOT
+        summary_root.mkdir(parents=True, exist_ok=True)
+        summary_filename = f"grid_summary_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.csv"
+        summary_path = summary_root / summary_filename
+        pd.DataFrame(summary_records).to_csv(summary_path, index=False)
+        print(f"Grid summary saved to {summary_path}")
+
+    return last_result
 
 
 if __name__ == "__main__":
