@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple
 import pandas as pd
+import numpy as np
 import backtrader as bt
 
 from backtrader import num2date
@@ -107,6 +108,7 @@ class VipHLStrategy(bt.Strategy):
         ('toggle_pnl', True), #what is this?
         ('debug_mode', False),  # Enable/disable debug printing
         ('debug_log_path', ''),
+        ('risk_free_rate', 0.0),  # Annual risk-free rate for Sharpe ratio (e.g., 0.04 for 4%)
     )
 
     def log(self, txt, dt=None, doprint=True):
@@ -545,8 +547,11 @@ class VipHLStrategy(bt.Strategy):
                     self.viphl.commit_latest_recovery_window(break_hl_at_price)
 
         self.manage_trade()
-        self._record_position_snapshot()
-        self._record_fund_snapshot()
+
+        # Only record snapshots within lookback period for accurate Sharpe ratio calculation
+        if within_lookback_period:
+            self._record_position_snapshot()
+            self._record_fund_snapshot()
 
     def quote_trade(self, scoring_params, scoring_metrics):
         stop_loss_percent = self.calculate_stop_loss_percent()
@@ -825,6 +830,52 @@ class VipHLStrategy(bt.Strategy):
                 end_index = hl.end_bar_index
             self.lines_info.append((hl.hl_value, hl.start_bar_index, end_index))
 
+    def calculate_sharpe_ratio_from_fund_history(self, risk_free_rate=None):
+        """
+        Calculate annualized Sharpe ratio from remaining fund history
+
+        Note: The fund history automatically respects the lookback parameter since
+        snapshots are only recorded for bars within the lookback period.
+        See next() method where _record_fund_snapshot() is called conditionally.
+        """
+        if risk_free_rate is None:
+            risk_free_rate = self.p.risk_free_rate
+
+        if len(self.remaining_fund_history) < 2:
+            return 0.0
+
+        # Calculate daily returns from fund history
+        # This respects lookback because fund_history only contains
+        # snapshots from bars within the lookback period
+        daily_returns = []
+        for i in range(1, len(self.remaining_fund_history)):
+            prev_equity = self.remaining_fund_history[i-1][1]
+            curr_equity = self.remaining_fund_history[i][1]
+            if prev_equity > 0:
+                daily_return = (curr_equity - prev_equity) / prev_equity * 100
+                daily_returns.append(daily_return)
+
+        if len(daily_returns) == 0:
+            return 0.0
+
+        std_return = np.std(daily_returns, ddof=1)
+        if std_return == 0:
+            return 0.0
+
+        # Calculate metrics
+        mean_return = np.mean(daily_returns)
+
+        # Daily risk-free rate (assuming annual rate input)
+        daily_rf = ((1 + risk_free_rate) ** (1/365) - 1) * 100
+
+        # Sharpe ratio
+        sharpe = (mean_return - daily_rf) / std_return
+
+        # Annualize (assuming 365 trading days for crypto)
+        annualized_sharpe = sharpe * math.sqrt(365)
+
+        return annualized_sharpe
+
     def finalize_and_display_backtest_result(self):
         win_count = 0
         loss_count = 0
@@ -870,6 +921,9 @@ class VipHLStrategy(bt.Strategy):
         # Get PnL scale (same for all trades in a run since it's based on fixed m,n,k parameters)
         scale = round(list(self.trade_scales.values())[0], 3) if len(self.trade_scales) > 0 else 0
 
+        # Calculate Sharpe ratio
+        sharpe_ratio = self.calculate_sharpe_ratio_from_fund_history()
+
         self.result = {
             "Total Pnl%": total_pnl,
             "Avg Pnl% per entry": avg_pnl_per_entry,
@@ -878,7 +932,8 @@ class VipHLStrategy(bt.Strategy):
             "Avg Winner%": avg_winning_pnl,
             "Avg Loser%": avg_losing_pnl,
             "Fit Score": fit_score,
-            "Scale": scale
+            "Scale": scale,
+            "Sharpe Ratio": round(sharpe_ratio, 3)
         }
         self.trade_detail_list = trade_detail_list
 

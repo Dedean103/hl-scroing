@@ -75,6 +75,7 @@ DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
     "lookback": 1000,
     "starting_fund": 2_000_000,
     "min_entry_size_denominator": 100,
+    "risk_free_rate": 0.0,  # Annual risk-free rate (e.g., 0.04 for 4%)
 }
 
 DEFAULT_MAIN_OPTIONS = {
@@ -96,6 +97,7 @@ DEFAULT_MAIN_OPTIONS = {
     "lookback_date": "2023-09-01",
     "starting_fund": 2_000_000,
     "min_entry_size_denominator": 50,
+    "risk_free_rate": 0.0,  # Annual risk-free rate (e.g., 0.04 for 4%)
     "no_save": False,
     "show_plot": False,
     "start_date": "2022-01-01",
@@ -169,6 +171,7 @@ def build_strategy_kwargs(
     min_entry_size_denominator: float,
     start_date: str,
     end_date: str,
+    risk_free_rate: float = 0.0,
 ) -> Dict[str, Any]:
     """Merge configuration values into the default strategy configuration."""
     config = dict(DEFAULT_STRATEGY_CONFIG)
@@ -212,6 +215,7 @@ def build_strategy_kwargs(
         config["plot_end_date"] = end_date
     config["starting_fund"] = starting_fund
     config["min_entry_size_denominator"] = min_entry_size_denominator
+    config["risk_free_rate"] = risk_free_rate
     if lookback_date:
         config["lookback_date"] = lookback_date
 
@@ -549,6 +553,7 @@ def plot_trade_results(
         f"Avg Loser: {result_stats.get('Avg Loser%', 0):.2f}%\n"
         f"Fit Score: {result_stats.get('Fit Score', 0):.2f}\n"
         f"PnL Scale: {result_stats.get('Scale', 0):.2f}\n"
+        f"Sharpe Ratio: {result_stats.get('Sharpe Ratio', 0):.3f}\n"
     )
 
     if strategy_params:
@@ -996,6 +1001,7 @@ def main(
     lookback_date: Optional[str] = DEFAULT_MAIN_OPTIONS["lookback_date"],
     starting_fund: float = DEFAULT_MAIN_OPTIONS["starting_fund"],
     min_entry_size_denominator: float = DEFAULT_MAIN_OPTIONS["min_entry_size_denominator"],
+    risk_free_rate: float = DEFAULT_MAIN_OPTIONS["risk_free_rate"],
     no_save: bool = DEFAULT_MAIN_OPTIONS["no_save"],
     show_plot: bool = DEFAULT_MAIN_OPTIONS["show_plot"],
     start_date: str = DEFAULT_MAIN_OPTIONS["start_date"],
@@ -1054,6 +1060,7 @@ def main(
                             lookback_date=lookback_date,
                             starting_fund=starting_fund,
                             min_entry_size_denominator=min_entry_size_denominator,
+                            risk_free_rate=risk_free_rate,
                             start_date=start_date,
                             end_date=end_date,
                         )
@@ -1086,6 +1093,7 @@ def main(
                                 "Fit Score": stats.get("Fit Score", 0.0),
                                 "Trade Count": stats.get("Trade Count", 0),
                                 "Scale": stats.get("Scale", 0),
+                                "Sharpe Ratio": stats.get("Sharpe Ratio", 0.0),
                             }
                         )
 
