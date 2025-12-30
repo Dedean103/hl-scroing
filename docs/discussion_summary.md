@@ -452,4 +452,164 @@ The scoring system would make sense if:
 1. Each trade actually measured its own pivot's m,n values dynamically, OR
 2. Different trades use different detection parameters (which doesn't happen currently)
 
-Does this clarify the issue?
+====================================================
+
+   Entry 
+
+ 1. only_body_cross (True)
+
+  - Purpose: Determines whether to use only candle body or entire candle (including wicks) for HL crossing
+  validation
+  - Example:
+    - HL level: $50,000
+    - Candle: Open $49,900, Close $50,100, High $50,200, Low $49,800
+    - If True: Only checks if body (49,900-50,100) crosses HL ✓
+    - If False: Checks if full range (49,800-50,200) crosses HL ✓
+
+  2. close_above_hl_threshold (0.25)
+
+  - Purpose: Ensures price has convincingly broken above the HL resistance level
+  - Formula: close > hl_value * (1 + close_avg_percent * 0.01 * 0.25)
+  - Example:
+    - HL level: $50,000, Average daily move: 2%
+    - Required close: $50,000 * (1 + 0.02 * 0.25) = $50,250
+
+  3. close_above_low_threshold (1.25)
+
+  - Purpose: Confirms price recovered from the 2-bar low when signal triggers
+  - Formula: close > min(low[0], low[-1]) * (1 + close_avg_percent * 0.01 * 1.25)
+  - Example:
+    - 2-bar low: $48,000, Average move: 2%
+    - Required close: $48,000 * (1 + 0.02 * 1.25) = $48,600
+
+  4. close_above_recover_low_threshold (1.25)
+
+  - Purpose: For delayed signals - ensures price stays above the low from the recovery bar
+  - Used when: Signal triggers after initial recovery bar
+  - Example:
+    - Bar 100: Recovery detected at $49,000
+    - Bar 102: For signal to remain valid, close must be > $49,000 * (1 + 0.02 * 1.25) = $49,612.50
+
+  5. low_above_hl_threshold (0.5)
+
+  - Purpose: Detects when low is very close to HL (potential support test)
+  - Formula: low > hl_value AND hl_value * (1 + avg% * 0.5) >= low
+  - Example:
+    - HL: $50,000, Average move: 2%
+    - Valid range for low: $50,000 to $50,500
+    - If low = $50,200: Counts as "low above HL" condition
+
+  6. hl_extend_bar_cross_threshold (6)
+
+  - Purpose: Maximum allowed bar crosses after HL extension before violation
+  - Example:
+    - HL extended at bar 100
+    - Bars 101-105: Price crosses HL (5 times) ✓
+    - Bar 106: 6th cross - Still valid
+    - Bar 107: 7th cross - HL violated, signal invalid ✗
+
+  7. close_above_hl_search_range (5 bars)
+
+  - Purpose: Look-back window to count bars closing above HL
+  - Example (checking last 5 bars):
+  Bar -4: Close $50,100 (above HL $50,000) ✓
+  Bar -3: Close $49,900 (below HL) ✗
+  Bar -2: Close $50,200 (above HL) ✓
+  Bar -1: Close $50,150 (above HL) ✓
+  Bar 0:  Close $50,300 (above HL) ✓
+  Total: 4 bars above HL
+
+  8. close_above_hl_bar_count (3)
+
+  - Purpose: Minimum required bars closing above HL within search range
+  - Works with: close_above_hl_search_range
+  - Example: Need at least 3 of last 5 bars closing above HL for valid signal
+
+  9. trap_recover_window_threshold (6 bars)
+
+  - Purpose: Maximum bars allowed between breaking below HL and recovering above it
+  - Example:
+    - Bar 100: Price breaks below HL ($50,000 → $49,500)
+    - Bars 101-105: Price consolidates below HL
+    - Bar 106: Recovery above HL ✓ (within 6 bars)
+    - Bar 107+: Would be too late ✗
+
+  10. signal_window (2 bars)
+
+  - Purpose: Minimum bars between signals at same HL level (prevents duplicates)
+  - Example:
+    - Bar 100: Signal at HL $50,000
+    - Bar 101-102: Cannot signal at $50,000 (cooldown)
+    - Bar 103: Can signal at $50,000 again
+
+  Position Sizing
+
+  - starting_fund (2,000,000): Initial capital
+  - min_entry_size_denominator (100): Base allocation = fund/100
+  - PnL Scale (1-3x): Based on combined score from pivot parameters
+    - Scale = 1 + 2 * combined_score
+    - Combined score derived from weighted high/low pivot scores
+
+  Stop Loss & Exit
+
+reduce_stop_loss_threshold (5)
+
+  - Purpose: Ensures stop loss distance is reasonable relative to volatility
+  - Formula: stop_loss% < avg_move% * 5
+  - Example:
+    - Entry: $50,000, Stop at: $49,000
+    - Stop loss %: 2%, Average move: 2%
+    - Check: 2% < 2% * 5 = 10% ✓ (acceptable)
+    - If stop was at $44,000 (12% loss) → Signal rejected ✗
+
+  vviphl_reduce_stop_loss_threshold (5)
+
+  - Purpose: Same as above but for VVIP signals (high-quality setups)
+  - Can be different: Allows tighter/looser stops for VVIP signals
+
+  Exit Parameters
+
+  stop_loss_pt (1.0%)
+
+  - Purpose: Minimum profit threshold for first take-profit
+  - Used in: max(first_gain_ca_multiplier * avg%, stop_loss_pt)
+  - Example: Even if avg move is 0.3%, first TP is at least 1%
+
+  first_gain_ca_multiplier (2.0)
+
+  - First Take Profit: Exit 33% when gain > max(2 * avg_move, 1%)
+  - Example:
+    - Average move: 3% → Target: 6%
+    - Average move: 0.4% → Target: 1% (uses stop_loss_pt minimum)
+
+  max_gain_pt (50%)
+
+  - Purpose: Scales down returns for cycle/stop exits
+  - Formula: exit_return = actual_max_gain * 50%
+  - Example: Max reached 20% gain, exit gives 10% return
+
+  max_exit_ca_multiplier (3.0)
+
+  - Purpose: Threshold for enhanced stop-gain protection
+  - Example: If max gain > 3 * avg_move (e.g., 6%), use stop_gain_pt
+
+  stop_gain_pt (30%)
+
+  - Purpose: Preserves profits when stop loss hits after big gains
+  - Formula: exit = entry + (max_reached - entry) * 30%
+  - Example:
+    - Entry: $50,000, Max: $53,000 (6% gain)
+    - Stop hit: Exit at $50,900 (preserves 1.8% of 6%)
+
+  cycle_month (6.0)
+
+  - Purpose: Force exit after 6 months (120 trading days for crypto)
+  - Calculation: 6 months * 20 days = 120 bars
+  - Exit: At max_price * max_gain_pt (50%)
+
+  Scoring System
+
+  - power_scaling_factor (1.0): Exponent for window scoring (m^k + n^k)
+  - high_score_scaling_factor (0.5-1.0): Weight for high pivot contribution
+  - low_score_scaling_factor (0.5-1.0): Weight for low pivot contribution
+  - on_trend_ratio (1.0-1.5): Multiplier for trending conditions

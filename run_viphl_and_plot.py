@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 import sys
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+import itertools
 
 import backtrader as bt
 from backtrader import num2date
@@ -68,6 +69,29 @@ DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
     "low_score_scaling_factor": 0.5,
     "on_trend_ratio": 1.0,
     "enable_hl_byp_scoring": False,
+    
+    # Entry condition parameters (lines 70-79 in viphl_strategy_scoring.py)
+    "only_body_cross": True,
+    "close_above_hl_threshold": 0.25,
+    "close_above_low_threshold": 1.25,
+    "close_above_recover_low_threshold": 1.25,
+    "low_above_hl_threshold": 0.5,
+    "hl_extend_bar_cross_threshold": 6,
+    "close_above_hl_search_range": 5,
+    "close_above_hl_bar_count": 3,
+    "trap_recover_window_threshold": 6,
+    "signal_window": 2,
+    
+    # Stop loss & Exit parameters
+    "reduce_stop_loss_threshold": 5,
+    "vviphl_reduce_stop_loss_threshold": 5,
+    "stop_loss_pt": 1.0,
+    "first_gain_ca_multiplier": 2.0,
+    "max_gain_pt": 50.0,
+    "max_exit_ca_multiplier": 3.0,
+    "stop_gain_pt": 30.0,
+    "cycle_month": 6.0,
+    
     # Misc
     "mintick": 0.01,
     "debug_mode": True,
@@ -81,23 +105,46 @@ DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
 DEFAULT_MAIN_OPTIONS = {
     "csv": "BTC.csv",
     "mintick": 0.01,
-    "mn_start_normal": [8,10],#[8, 10, 12],
+    "mn_start_normal": 15,#[8, 10, 12],
     "mn_cap_normal": 20,#[20, 30, 40],
-    "mn_start_trend": 4,#[4, 5, 6],
+    "mn_start_trend": [4,5],#[4, 5, 6],
     "mn_cap_trend": 20,#[20, 30, 40],
     "static_window": 0,
     "power_scaling_factor": 1.5, #k
     "high_score_scaling_factor": 0.5,
     "low_score_scaling_factor": 0.5,
     "on_trend_ratio": 1.0,
-    "enable_scoring": True, #[True, False],
+    "enable_scoring": [True, False],
     "bar_count_to_by_point": 800,
+    
+    # Entry condition parameters - can be single value or list for grid search
+    "only_body_cross": True,  # or [True, False] for grid search
+    "close_above_hl_threshold": 0.25,  # or [0.2, 0.25, 0.3]
+    "close_above_low_threshold": 1.25,  # or [1.0, 1.25, 1.5]
+    "close_above_recover_low_threshold": 1.25,  # or [1.0, 1.25, 1.5]
+    "low_above_hl_threshold": 0.5,  # or [0.3, 0.5, 0.7]
+    "hl_extend_bar_cross_threshold": 6,  # or [5, 6, 7]
+    "close_above_hl_search_range": 5,  # or [4, 5, 6]
+    "close_above_hl_bar_count": 3,  # or [2, 3, 4]
+    "trap_recover_window_threshold": 6,  # or [5, 6, 7, 8]
+    "signal_window": 2,  # or [1, 2, 3]
+    
+    # Stop loss & Exit parameters - can be single value or list for grid search
+    "reduce_stop_loss_threshold": 5,  # or [4, 5, 6]
+    "vviphl_reduce_stop_loss_threshold": 5,  # or [4, 5, 6]
+    "stop_loss_pt": 1.0,  # or [0.5, 1.0, 1.5]
+    "first_gain_ca_multiplier": 2.0,  # or [1.5, 2.0, 2.5]
+    "max_gain_pt": 50.0,  # or [40, 50, 60]
+    "max_exit_ca_multiplier": 3.0,  # or [2.5, 3.0, 3.5]
+    "stop_gain_pt": 30.0,  # or [25, 30, 35]
+    "cycle_month": 6.0,  # or [4, 6, 8]
+    
     "debug_log": str(RESULTS_ROOT),
     "lookback": None,
     "lookback_date": "2023-09-01",
     "starting_fund": 2_000_000,
     "min_entry_size_denominator": 50,
-    "risk_free_rate": 0.0,  # Annual risk-free rate (e.g., 0.04 for 4%)
+    "risk_free_rate": 0.04,  # Annual risk-free rate (e.g., 0.04 for 4%)
     "no_save": False,
     "show_plot": False,
     "start_date": "2022-01-01",
@@ -117,6 +164,17 @@ def resolve_csv_path(csv_path: str) -> Path:
         return fallback
 
     raise FileNotFoundError(f"Could not find CSV at '{csv_path}' or '{fallback}'.")
+
+
+def _normalize_numeric_values(value: Union[float, int, Iterable[Union[float, int]]]) -> List[Union[float, int]]:
+    """Convert numeric values or iterables of numeric values into a concrete list."""
+    if isinstance(value, (int, float)):
+        return [value]
+    if not value:
+        return []
+    if isinstance(value, Iterable):
+        return [float(v) if '.' in str(v) else int(v) for v in value]
+    return [float(value) if '.' in str(value) else int(value)]
 
 
 def _normalize_mn_values(value: Union[int, Iterable[int]]) -> List[int]:
@@ -172,6 +230,26 @@ def build_strategy_kwargs(
     start_date: str,
     end_date: str,
     risk_free_rate: float = 0.0,
+    # Entry condition parameters
+    only_body_cross: bool = True,
+    close_above_hl_threshold: float = 0.25,
+    close_above_low_threshold: float = 1.25,
+    close_above_recover_low_threshold: float = 1.25,
+    low_above_hl_threshold: float = 0.5,
+    hl_extend_bar_cross_threshold: int = 6,
+    close_above_hl_search_range: int = 5,
+    close_above_hl_bar_count: int = 3,
+    trap_recover_window_threshold: int = 6,
+    signal_window: int = 2,
+    # Stop loss & Exit parameters
+    reduce_stop_loss_threshold: float = 5,
+    vviphl_reduce_stop_loss_threshold: float = 5,
+    stop_loss_pt: float = 1.0,
+    first_gain_ca_multiplier: float = 2.0,
+    max_gain_pt: float = 50.0,
+    max_exit_ca_multiplier: float = 3.0,
+    stop_gain_pt: float = 30.0,
+    cycle_month: float = 6.0,
 ) -> Dict[str, Any]:
     """Merge configuration values into the default strategy configuration."""
     config = dict(DEFAULT_STRATEGY_CONFIG)
@@ -218,6 +296,28 @@ def build_strategy_kwargs(
     config["risk_free_rate"] = risk_free_rate
     if lookback_date:
         config["lookback_date"] = lookback_date
+    
+    # Entry condition parameters
+    config["only_body_cross"] = only_body_cross
+    config["close_above_hl_threshold"] = close_above_hl_threshold
+    config["close_above_low_threshold"] = close_above_low_threshold
+    config["close_above_recover_low_threshold"] = close_above_recover_low_threshold
+    config["low_above_hl_threshold"] = low_above_hl_threshold
+    config["hl_extend_bar_cross_threshold"] = hl_extend_bar_cross_threshold
+    config["close_above_hl_search_range"] = close_above_hl_search_range
+    config["close_above_hl_bar_count"] = close_above_hl_bar_count
+    config["trap_recover_window_threshold"] = trap_recover_window_threshold
+    config["signal_window"] = signal_window
+    
+    # Stop loss & Exit parameters
+    config["reduce_stop_loss_threshold"] = reduce_stop_loss_threshold
+    config["vviphl_reduce_stop_loss_threshold"] = vviphl_reduce_stop_loss_threshold
+    config["stop_loss_pt"] = stop_loss_pt
+    config["first_gain_ca_multiplier"] = first_gain_ca_multiplier
+    config["max_gain_pt"] = max_gain_pt
+    config["max_exit_ca_multiplier"] = max_exit_ca_multiplier
+    config["stop_gain_pt"] = stop_gain_pt
+    config["cycle_month"] = cycle_month
 
     return config
 
@@ -331,6 +431,17 @@ def run_strategy_and_plot(
         "on_trend_ratio": strat.params.on_trend_ratio,
         "enable_hl_byp_scoring": strat.params.enable_hl_byp_scoring,
         "debug_log_path": strat.params.debug_log_path,
+        # Entry condition parameters
+        "only_body_cross": strat.params.only_body_cross,
+        "close_above_hl_threshold": strat.params.close_above_hl_threshold,
+        "close_above_low_threshold": strat.params.close_above_low_threshold,
+        "close_above_recover_low_threshold": strat.params.close_above_recover_low_threshold,
+        "low_above_hl_threshold": strat.params.low_above_hl_threshold,
+        "hl_extend_bar_cross_threshold": strat.params.hl_extend_bar_cross_threshold,
+        "close_above_hl_search_range": strat.params.close_above_hl_search_range,
+        "close_above_hl_bar_count": strat.params.close_above_hl_bar_count,
+        "trap_recover_window_threshold": strat.params.trap_recover_window_threshold,
+        "signal_window": strat.params.signal_window,
     }
 
     price_fig, _ = plot_trade_results(
@@ -568,7 +679,19 @@ def plot_trade_results(
             f"High/Low Score Weights: {strategy_params['high_score_scaling_factor']:.2f} / "
             f"{strategy_params['low_score_scaling_factor']:.2f}\n"
             f"On-Trend Ratio: {strategy_params['on_trend_ratio']:.2f}\n"
-            f"HL byP Scoring: {'Enabled' if strategy_params['enable_hl_byp_scoring'] else 'Disabled'}"
+            f"HL byP Scoring: {'Enabled' if strategy_params['enable_hl_byp_scoring'] else 'Disabled'}\n"
+            "\n━━━━━━━━━━━━━━━━━━━━\n"
+            "Entry Conditions:\n"
+            f"Body Cross Only: {strategy_params.get('only_body_cross', 'N/A')}\n"
+            f"Close Above HL: {strategy_params.get('close_above_hl_threshold', 'N/A')}\n"
+            f"Close Above Low: {strategy_params.get('close_above_low_threshold', 'N/A')}\n"
+            f"Close Recover Low: {strategy_params.get('close_above_recover_low_threshold', 'N/A')}\n"
+            f"Low Above HL: {strategy_params.get('low_above_hl_threshold', 'N/A')}\n"
+            f"HL Extend Bar Cross: {strategy_params.get('hl_extend_bar_cross_threshold', 'N/A')}\n"
+            f"Close HL Search Range: {strategy_params.get('close_above_hl_search_range', 'N/A')}\n"
+            f"Close HL Bar Count: {strategy_params.get('close_above_hl_bar_count', 'N/A')}\n"
+            f"Trap Recover Window: {strategy_params.get('trap_recover_window_threshold', 'N/A')}\n"
+            f"Signal Window: {strategy_params.get('signal_window', 'N/A')}"
         )
         stats_text += params_text
 
@@ -996,6 +1119,27 @@ def main(
     on_trend_ratio: float = DEFAULT_MAIN_OPTIONS["on_trend_ratio"],
     enable_scoring: Union[bool, Iterable[bool]] = DEFAULT_MAIN_OPTIONS["enable_scoring"],
     bar_count_to_by_point: int = DEFAULT_MAIN_OPTIONS["bar_count_to_by_point"],
+    # Entry condition parameters
+    only_body_cross: Union[bool, Iterable[bool]] = DEFAULT_MAIN_OPTIONS["only_body_cross"],
+    close_above_hl_threshold: Union[float, Iterable[float]] = DEFAULT_MAIN_OPTIONS["close_above_hl_threshold"],
+    close_above_low_threshold: Union[float, Iterable[float]] = DEFAULT_MAIN_OPTIONS["close_above_low_threshold"],
+    close_above_recover_low_threshold: Union[float, Iterable[float]] = DEFAULT_MAIN_OPTIONS["close_above_recover_low_threshold"],
+    low_above_hl_threshold: Union[float, Iterable[float]] = DEFAULT_MAIN_OPTIONS["low_above_hl_threshold"],
+    hl_extend_bar_cross_threshold: Union[int, Iterable[int]] = DEFAULT_MAIN_OPTIONS["hl_extend_bar_cross_threshold"],
+    close_above_hl_search_range: Union[int, Iterable[int]] = DEFAULT_MAIN_OPTIONS["close_above_hl_search_range"],
+    close_above_hl_bar_count: Union[int, Iterable[int]] = DEFAULT_MAIN_OPTIONS["close_above_hl_bar_count"],
+    trap_recover_window_threshold: Union[int, Iterable[int]] = DEFAULT_MAIN_OPTIONS["trap_recover_window_threshold"],
+    signal_window: Union[int, Iterable[int]] = DEFAULT_MAIN_OPTIONS["signal_window"],
+    # Stop loss & Exit parameters
+    reduce_stop_loss_threshold: Union[float, Iterable[float]] = DEFAULT_MAIN_OPTIONS["reduce_stop_loss_threshold"],
+    vviphl_reduce_stop_loss_threshold: Union[float, Iterable[float]] = DEFAULT_MAIN_OPTIONS["vviphl_reduce_stop_loss_threshold"],
+    stop_loss_pt: Union[float, Iterable[float]] = DEFAULT_MAIN_OPTIONS["stop_loss_pt"],
+    first_gain_ca_multiplier: Union[float, Iterable[float]] = DEFAULT_MAIN_OPTIONS["first_gain_ca_multiplier"],
+    max_gain_pt: Union[float, Iterable[float]] = DEFAULT_MAIN_OPTIONS["max_gain_pt"],
+    max_exit_ca_multiplier: Union[float, Iterable[float]] = DEFAULT_MAIN_OPTIONS["max_exit_ca_multiplier"],
+    stop_gain_pt: Union[float, Iterable[float]] = DEFAULT_MAIN_OPTIONS["stop_gain_pt"],
+    cycle_month: Union[float, Iterable[float]] = DEFAULT_MAIN_OPTIONS["cycle_month"],
+    # Other parameters
     debug_log: str = DEFAULT_MAIN_OPTIONS["debug_log"],
     lookback: int = DEFAULT_MAIN_OPTIONS["lookback"],
     lookback_date: Optional[str] = DEFAULT_MAIN_OPTIONS["lookback_date"],
@@ -1027,75 +1171,177 @@ def main(
     csv_path = resolve_csv_path(csv)
     resolved_output_dir = Path(output_dir).expanduser().resolve() if output_dir else None
 
+    # Normalize all parameter values for grid search
     normal_values = _normalize_mn_values(mn_start_normal)
     trend_values = _normalize_mn_values(mn_start_trend)
     normal_cap_values = _normalize_mn_values(mn_cap_normal)
     trend_cap_values = _normalize_mn_values(mn_cap_trend)
     scoring_values = _normalize_boolean_values(enable_scoring)
+    
+    # Entry condition parameters
+    only_body_cross_values = _normalize_boolean_values(only_body_cross)
+    close_above_hl_threshold_values = _normalize_numeric_values(close_above_hl_threshold)
+    close_above_low_threshold_values = _normalize_numeric_values(close_above_low_threshold)
+    close_above_recover_low_threshold_values = _normalize_numeric_values(close_above_recover_low_threshold)
+    low_above_hl_threshold_values = _normalize_numeric_values(low_above_hl_threshold)
+    hl_extend_bar_cross_threshold_values = _normalize_mn_values(hl_extend_bar_cross_threshold)
+    close_above_hl_search_range_values = _normalize_mn_values(close_above_hl_search_range)
+    close_above_hl_bar_count_values = _normalize_mn_values(close_above_hl_bar_count)
+    trap_recover_window_threshold_values = _normalize_mn_values(trap_recover_window_threshold)
+    signal_window_values = _normalize_mn_values(signal_window)
+    
+    # Stop loss & Exit parameters
+    reduce_stop_loss_threshold_values = _normalize_numeric_values(reduce_stop_loss_threshold)
+    vviphl_reduce_stop_loss_threshold_values = _normalize_numeric_values(vviphl_reduce_stop_loss_threshold)
+    stop_loss_pt_values = _normalize_numeric_values(stop_loss_pt)
+    first_gain_ca_multiplier_values = _normalize_numeric_values(first_gain_ca_multiplier)
+    max_gain_pt_values = _normalize_numeric_values(max_gain_pt)
+    max_exit_ca_multiplier_values = _normalize_numeric_values(max_exit_ca_multiplier)
+    stop_gain_pt_values = _normalize_numeric_values(stop_gain_pt)
+    cycle_month_values = _normalize_numeric_values(cycle_month)
 
     summary_records = []
     last_result: Tuple[Optional[VipHLStrategy], Optional[Cerebro]] = (None, None)
 
-    for normal in normal_values:
-        for trend in trend_values:
-            for normal_cap in normal_cap_values:
-                for trend_cap in trend_cap_values:
-                    for scoring in scoring_values:
-                        strategy_kwargs = build_strategy_kwargs(
-                            csv=csv,
-                            mintick=mintick,
-                            mn_start_normal=normal,
-                            mn_cap_normal=normal_cap,
-                            mn_start_trend=trend,
-                            mn_cap_trend=trend_cap,
-                            static_window=static_window,
-                            power_scaling_factor=power_scaling_factor,
-                            high_score_scaling_factor=high_score_scaling_factor,
-                            low_score_scaling_factor=low_score_scaling_factor,
-                            on_trend_ratio=on_trend_ratio,
-                            enable_scoring=scoring,
-                            bar_count_to_by_point=bar_count_to_by_point,
-                            debug_log=debug_log,
-                            lookback=lookback,
-                            lookback_date=lookback_date,
-                            starting_fund=starting_fund,
-                            min_entry_size_denominator=min_entry_size_denominator,
-                            risk_free_rate=risk_free_rate,
-                            start_date=start_date,
-                            end_date=end_date,
-                        )
+    # Create combinations for grid search
+    param_combinations = itertools.product(
+        normal_values,
+        trend_values,
+        normal_cap_values,
+        trend_cap_values,
+        scoring_values,
+        only_body_cross_values,
+        close_above_hl_threshold_values,
+        close_above_low_threshold_values,
+        close_above_recover_low_threshold_values,
+        low_above_hl_threshold_values,
+        hl_extend_bar_cross_threshold_values,
+        close_above_hl_search_range_values,
+        close_above_hl_bar_count_values,
+        trap_recover_window_threshold_values,
+        signal_window_values,
+        reduce_stop_loss_threshold_values,
+        vviphl_reduce_stop_loss_threshold_values,
+        stop_loss_pt_values,
+        first_gain_ca_multiplier_values,
+        max_gain_pt_values,
+        max_exit_ca_multiplier_values,
+        stop_gain_pt_values,
+        cycle_month_values,
+    )
+    
+    # Check if this is a grid search
+    total_combinations = (
+        len(normal_values) * len(trend_values) * len(normal_cap_values) * len(trend_cap_values) *
+        len(scoring_values) * len(only_body_cross_values) * len(close_above_hl_threshold_values) *
+        len(close_above_low_threshold_values) * len(close_above_recover_low_threshold_values) *
+        len(low_above_hl_threshold_values) * len(hl_extend_bar_cross_threshold_values) *
+        len(close_above_hl_search_range_values) * len(close_above_hl_bar_count_values) *
+        len(trap_recover_window_threshold_values) * len(signal_window_values) *
+        len(reduce_stop_loss_threshold_values) * len(vviphl_reduce_stop_loss_threshold_values) *
+        len(stop_loss_pt_values) * len(first_gain_ca_multiplier_values) * len(max_gain_pt_values) *
+        len(max_exit_ca_multiplier_values) * len(stop_gain_pt_values) * len(cycle_month_values)
+    )
+    is_grid_search = total_combinations > 1
+    
+    if is_grid_search:
+        print(f"Running grid search with {total_combinations} combinations...")
+    
+    for combo_idx, params in enumerate(param_combinations, 1):
+        (normal, trend, normal_cap, trend_cap, scoring, only_body, close_hl_th, close_low_th,
+         close_recover_th, low_hl_th, hl_extend_th, hl_search_range, hl_bar_count,
+         trap_recover_th, sig_window, reduce_sl_th, vvip_sl_th, sl_pt, first_gain,
+         max_gain, max_exit, stop_gain, cycle_mo) = params
+        
+        if is_grid_search:
+            print(f"\n=== Combination {combo_idx}/{total_combinations} ===")
+            print(f"Core params: normal={normal}, trend={trend}, scoring={scoring}")
+            print(f"Entry params: close_hl={close_hl_th}, trap_window={trap_recover_th}")
+            print(f"Exit params: stop_loss={sl_pt}, first_gain={first_gain}")
+        
+        strategy_kwargs = build_strategy_kwargs(
+            csv=csv,
+            mintick=mintick,
+            mn_start_normal=normal,
+            mn_cap_normal=normal_cap,
+            mn_start_trend=trend,
+            mn_cap_trend=trend_cap,
+            static_window=static_window,
+            power_scaling_factor=power_scaling_factor,
+            high_score_scaling_factor=high_score_scaling_factor,
+            low_score_scaling_factor=low_score_scaling_factor,
+            on_trend_ratio=on_trend_ratio,
+            enable_scoring=scoring,
+            bar_count_to_by_point=bar_count_to_by_point,
+            debug_log=debug_log,
+            lookback=lookback,
+            lookback_date=lookback_date,
+            starting_fund=starting_fund,
+            min_entry_size_denominator=min_entry_size_denominator,
+            risk_free_rate=risk_free_rate,
+            start_date=start_date,
+            end_date=end_date,
+            # Entry condition parameters
+            only_body_cross=only_body,
+            close_above_hl_threshold=close_hl_th,
+            close_above_low_threshold=close_low_th,
+            close_above_recover_low_threshold=close_recover_th,
+            low_above_hl_threshold=low_hl_th,
+            hl_extend_bar_cross_threshold=hl_extend_th,
+            close_above_hl_search_range=hl_search_range,
+            close_above_hl_bar_count=hl_bar_count,
+            trap_recover_window_threshold=trap_recover_th,
+            signal_window=sig_window,
+            # Stop loss & Exit parameters
+            reduce_stop_loss_threshold=reduce_sl_th,
+            vviphl_reduce_stop_loss_threshold=vvip_sl_th,
+            stop_loss_pt=sl_pt,
+            first_gain_ca_multiplier=first_gain,
+            max_gain_pt=max_gain,
+            max_exit_ca_multiplier=max_exit,
+            stop_gain_pt=stop_gain,
+            cycle_month=cycle_mo,
+        )
 
-                        is_grid_search = len(normal_values) > 1 or len(trend_values) > 1 or len(normal_cap_values) > 1 or len(trend_cap_values) > 1 or len(scoring_values) > 1
-                        if is_grid_search:
-                            print(
-                                f"=== Running grid combination: normal {normal}, trend {trend}, normal_cap {normal_cap}, "
-                                f"trend_cap {trend_cap}, scoring {scoring} ==="
-                            )
+        strat, cerebro = run_strategy_and_plot(
+            csv_file=csv_path,
+            save_plot=not no_save,
+            show_plot=show_plot,
+            output_dir=resolved_output_dir,
+            strategy_kwargs=strategy_kwargs,
+        )
+        last_result = (strat, cerebro)
 
-                        strat, cerebro = run_strategy_and_plot(
-                            csv_file=csv_path,
-                            save_plot=not no_save,
-                            show_plot=show_plot,
-                            output_dir=resolved_output_dir,
-                            strategy_kwargs=strategy_kwargs,
-                        )
-                        last_result = (strat, cerebro)
-
-                        stats = getattr(strat, "result", {})
-                        summary_records.append(
-                            {
-                                "mn_start_normal": normal,
-                                "mn_cap_normal": normal_cap,
-                                "mn_start_trend": trend,
-                                "mn_cap_trend": trend_cap,
-                                "enable_scoring": scoring,
-                                "Total Pnl%": stats.get("Total Pnl%", 0.0),
-                                "Fit Score": stats.get("Fit Score", 0.0),
-                                "Trade Count": stats.get("Trade Count", 0),
-                                "Scale": stats.get("Scale", 0),
-                                "Sharpe Ratio": stats.get("Sharpe Ratio", 0.0),
-                            }
-                        )
+        stats = getattr(strat, "result", {})
+        summary_records.append(
+            {
+                "mn_start_normal": normal,
+                "mn_cap_normal": normal_cap,
+                "mn_start_trend": trend,
+                "mn_cap_trend": trend_cap,
+                "enable_scoring": scoring,
+                # Entry condition parameters (from lines 121-130)
+                "only_body_cross": only_body,
+                "close_above_hl_threshold": close_hl_th,
+                "close_above_low_threshold": close_low_th,
+                "close_above_recover_low_threshold": close_recover_th,
+                "low_above_hl_threshold": low_hl_th,
+                "hl_extend_bar_cross_threshold": hl_extend_th,
+                "close_above_hl_search_range": hl_search_range,
+                "close_above_hl_bar_count": hl_bar_count,
+                "trap_recover_window_threshold": trap_recover_th,
+                "signal_window": sig_window,
+                # Exit parameters
+                "stop_loss_pt": sl_pt,
+                "first_gain_ca_multiplier": first_gain,
+                # Performance metrics
+                "Total Pnl%": stats.get("Total Pnl%", 0.0),
+                "Fit Score": stats.get("Fit Score", 0.0),
+                "Trade Count": stats.get("Trade Count", 0),
+                "Scale": stats.get("Scale", 0),
+                "Sharpe Ratio": stats.get("Sharpe Ratio", 0.0),
+            }
+        )
 
     if summary_records and len(summary_records) > 1:
         summary_root = resolved_output_dir or RESULTS_ROOT
