@@ -613,3 +613,35 @@ reduce_stop_loss_threshold (5)
   - high_score_scaling_factor (0.5-1.0): Weight for high pivot contribution
   - low_score_scaling_factor (0.5-1.0): Weight for low pivot contribution
   - on_trend_ratio (1.0-1.5): Multiplier for trending conditions
+
+
+
+  ## td
+
+Once you set the parameters (like first_gain_ca_multiplier, close_average_percent, stop_loss_pt), the dynamic threshold for partial profit is determined.
+During backtesting, the strategy checks if price movement exceeds that threshold and then applies the partial exit logic (close 33% of the position).
+PnL and Fit Score calculations are based on percentage returns only, not on position size.
+Therefore, the entire process of calculating those summary metrics (Total Pnl%, Fit Score) is independent of entry size, even though entry size affects equity and dollar exposure internally.
+
+So:
+
+✅ Threshold is dynamic but fixed for the run once parameters are set.
+✅ Backtest logic uses that threshold to trigger partial exits.
+❌ Entry size does not influence the reported PnL% or Fit Score in your current implementation.
+
+Do you want me to illustrate this flow in a simple diagram (Parameters → Threshold → Partial Exit → PnL calc) or write a short snippet showing how to make PnL size-aware so entry size matters?
+Provide your feedback on BizChat
+
+Key points
+
+The partial profit threshold is dynamic, not fixed:
+
+It scales with close_average_percent and first_gain_ca_multiplier.
+
+The amount you close is fixed at one-third of the position, not based on price or dollar value.
+The PnL you record for this partial exit is cur_return / 3 (percentage-based), not size-weighted.
+
+✅ So: Partial profit is triggered by a dynamic % threshold and closes 33% of the position.
+It’s not a fixed dollar amount, and the threshold depends on your parameters and market conditions.
+
+Do you want me to diagram the full exit logic (partial TP → final exit paths) so you can see all conditions visually? Or should I write a short snippet showing how to tweak the partial profit ratio or threshold if you want it configurable?

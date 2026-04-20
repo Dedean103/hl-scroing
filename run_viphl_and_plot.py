@@ -105,10 +105,10 @@ DEFAULT_STRATEGY_CONFIG: Dict[str, Any] = {
 DEFAULT_MAIN_OPTIONS = {
     "csv": "BTC.csv",
     "mintick": 0.01,
-    "mn_start_normal": 15,#[8, 10, 12],
-    "mn_cap_normal": 20,#[20, 30, 40],
-    "mn_start_trend": [4,5],#[4, 5, 6],
-    "mn_cap_trend": 20,#[20, 30, 40],
+    "mn_start_normal": [10, 15],#[8, 10, 12],
+    "mn_cap_normal": [20, 30, 40],
+    "mn_start_trend": [4, 5, 6],
+    "mn_cap_trend": [20, 30],#, 40],
     "static_window": 0,
     "power_scaling_factor": 1.5, #k
     "high_score_scaling_factor": 0.5,
@@ -120,13 +120,13 @@ DEFAULT_MAIN_OPTIONS = {
     # Entry condition parameters - can be single value or list for grid search
     "only_body_cross": True,  # or [True, False] for grid search
     "close_above_hl_threshold": 0.25,  # or [0.2, 0.25, 0.3]
-    "close_above_low_threshold": 1.25,  # or [1.0, 1.25, 1.5]
-    "close_above_recover_low_threshold": 1.25,  # or [1.0, 1.25, 1.5]
+    "close_above_low_threshold": [1.0, 1.25, 1.5],
+    "close_above_recover_low_threshold": [1.0, 1.25, 1.5],
     "low_above_hl_threshold": 0.5,  # or [0.3, 0.5, 0.7]
     "hl_extend_bar_cross_threshold": 6,  # or [5, 6, 7]
-    "close_above_hl_search_range": 5,  # or [4, 5, 6]
+    "close_above_hl_search_range": [4, 5, 6, 7],
     "close_above_hl_bar_count": 3,  # or [2, 3, 4]
-    "trap_recover_window_threshold": 6,  # or [5, 6, 7, 8]
+    "trap_recover_window_threshold": [5, 6, 7, 8],
     "signal_window": 2,  # or [1, 2, 3]
     
     # Stop loss & Exit parameters - can be single value or list for grid search

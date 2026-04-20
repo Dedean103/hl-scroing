@@ -1,0 +1,5 @@
+mn_start_normal,mn_cap_normal,mn_start_trend,mn_cap_trend,enable_scoring,only_body_cross,close_above_hl_threshold,close_above_low_threshold,close_above_recover_low_threshold,low_above_hl_threshold,hl_extend_bar_cross_threshold,close_above_hl_search_range,close_above_hl_bar_count,trap_recover_window_threshold,signal_window,stop_loss_pt,first_gain_ca_multiplier,Total Pnl%,Fit Score,Trade Count,Scale,Sharpe Ratio
+15,20,4,20,True,True,0.25,1.25,1.25,0.5,6,5,3,6,2,1.0,2.0,511.91,3.88,68,1.297,0.089
+15,20,4,20,False,True,0.25,1.25,1.25,0.5,6,5,3,6,2,1.0,2.0,990.13,3.81,68,3.0,0.511
+15,20,5,20,True,True,0.25,1.25,1.25,0.5,6,5,3,6,2,1.0,2.0,514.52,3.97,62,1.297,0.084
+15,20,5,20,False,True,0.25,1.25,1.25,0.5,6,5,3,6,2,1.0,2.0,974.43,3.9,62,3.0,0.487
